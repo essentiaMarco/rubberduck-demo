@@ -1,0 +1,44 @@
+--- a/environments/daytona.py
++++ b/environments/daytona.py
+@@ -7,6 +7,7 @@ from uuid import uuid4
+ from daytona import (
+     AsyncDaytona,
+     AsyncSandbox,
+     CreateSandboxFromImageParams,
+     CreateSandboxFromSnapshotParams,
++    DaytonaError,
+     DaytonaNotFoundError,
+     FileDownloadRequest,
+     FileUpload,
+@@ -19,7 +20,7 @@ from daytona import (
+ )
+ from daytona._async.snapshot import SnapshotState
+-from tenacity import retry, stop_after_attempt, wait_exponential
++from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+ 
+ from harbor.environments.base import BaseEnvironment, ExecResult
+ from harbor.environments.docker import (
+@@ -848,9 +849,11 @@ class DaytonaEnvironmentStrategyDirect:
+             await self._sandbox.delete()
+ 
+     @retry(
+-        stop=stop_after_attempt(3),
+-        wait=wait_exponential(multiplier=1, min=1, max=10),
++        retry=retry_if_exception_type(DaytonaError),
++        stop=stop_after_attempt(10),
++        wait=wait_exponential(multiplier=2, min=2, max=30),
+         reraise=True,
+     )
+     async def _get_session_command_with_retry(self, session_id: str, command_id: str):
+@@ -859,9 +862,11 @@ class DaytonaEnvironmentStrategyDirect:
+         return await self._sandbox.process.get_session_command(session_id, command_id)
+ 
+     @retry(
+-        stop=stop_after_attempt(3),
+-        wait=wait_exponential(multiplier=1, min=1, max=10),
++        retry=retry_if_exception_type(DaytonaError),
++        stop=stop_after_attempt(10),
++        wait=wait_exponential(multiplier=2, min=2, max=30),
+         reraise=True,
+     )
+     async def _get_session_command_logs_with_retry(

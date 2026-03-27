@@ -1,0 +1,10 @@
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -431,6 +431,7 @@ def get_combinator_sql(self, combinator, all):
+                 compiler.query.set_values((
+                     *self.query.extra_select,
+                     *self.query.values_select,
+                     *self.query.annotation_select,
+                 ))
++                compiler.query.clear_ordering(force_empty=True)
+                 part_sql, part_args = compiler.as_sql()

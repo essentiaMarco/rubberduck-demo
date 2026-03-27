@@ -1,0 +1,26 @@
+# Single-task run: django-10554 (union + order_by bug)
+# Use this to validate the fix and MCP usage before running the full 26-task job.
+#
+# Run:
+#   export RUBBERDUCK_TOKEN='your-token'
+#   harbor run -c swebench/job_config_single_10554.yaml --ae RUBBERDUCK_TOKEN=$RUBBERDUCK_TOKEN
+
+agents:
+  - import_path: swebench.rubberduck_agent:RubberDuckClaudeCode
+    model_name: anthropic/claude-sonnet-4-6
+    # 30 min: enough to finish the fix; still under typical Daytona/session limits
+    override_timeout_sec: 1800
+
+environment:
+  type: daytona
+
+orchestrator:
+  n_concurrent_trials: 1
+
+datasets:
+  - name: swebench-verified
+    version: "1.0"
+    registry:
+      url: "https://raw.githubusercontent.com/laude-institute/harbor/main/registry.json"
+    task_names:
+      - django__django-10554

@@ -1,0 +1,50 @@
+# Harbor job config: SWE-bench Verified – 26 hard Django tasks + Rubberduck MCP
+#
+# Run with:
+#   source ~/.zprofile
+#   unset ANTHROPIC_BASE_URL   # prevents Harbor model-name prefix bug
+#   DAYTONA_API_KEY=<key> RUBBERDUCK_TOKEN=<token> harbor run -c swebench/job_config.yaml
+
+agents:
+  - import_path: swebench.rubberduck_agent:RubberDuckClaudeCode
+    model_name: anthropic/claude-sonnet-4-6
+
+environment:
+  type: daytona
+
+orchestrator:
+  n_concurrent_trials: 8
+
+datasets:
+  - name: swebench-verified
+    version: "1.0"
+    registry:
+      url: "https://raw.githubusercontent.com/laude-institute/harbor/main/registry.json"
+    # 26 Django tasks from swebench-verified@1.0 (version >= 13000, harder bugs)
+    task_names:
+      - django__django-13012
+      - django__django-13023
+      - django__django-13028
+      - django__django-13033
+      - django__django-13089
+      - django__django-13109
+      - django__django-13112
+      - django__django-13121
+      - django__django-13128
+      - django__django-13158
+      - django__django-13195
+      - django__django-13212
+      - django__django-13279
+      - django__django-13297
+      - django__django-13315
+      - django__django-13343
+      - django__django-13344
+      - django__django-13346
+      - django__django-13363
+      - django__django-13401
+      - django__django-13406
+      - django__django-13410
+      - django__django-13417
+      - django__django-13449
+      - django__django-13512
+      - django__django-13513
