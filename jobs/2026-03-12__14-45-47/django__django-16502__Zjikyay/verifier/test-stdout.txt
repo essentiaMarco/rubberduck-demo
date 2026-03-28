@@ -1,0 +1,171 @@
+++ cd /testbed
+++ set +x
+++ python -m pip install -e .
+Obtaining file:///testbed
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: asgiref>=3.6.0 in /opt/miniconda3/envs/testbed/lib/python3.11/site-packages (from Django==5.0.dev20250910132624) (3.8.1)
+Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.11/site-packages (from Django==5.0.dev20250910132624) (0.5.1)
+Building wheels for collected packages: Django
+  Building editable for Django (pyproject.toml): started
+  Building editable for Django (pyproject.toml): finished with status 'done'
+  Created wheel for Django: filename=django-5.0.dev20250910132624-0.editable-py3-none-any.whl size=27378 sha256=37e89bbde7566a4957e08adc42893a531020cef0ad381750fbe48d25cf458a63
+  Stored in directory: /tmp/pip-ephem-wheel-cache-9hcto6mf/wheels/49/5f/4f/01b7d31ea6ddac9643da788242d33e5fd3467d95d17b032c6b
+Successfully built Django
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 5.0.dev20230126185448
+    Uninstalling Django-5.0.dev20230126185448:
+      Successfully uninstalled Django-5.0.dev20230126185448
+Successfully installed Django-5.0.dev20250910132624
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable.It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+++ git checkout 246eb4836a6fb967880f838aa0d22ecfdca8b6f1 tests/servers/test_basehttp.py
+Updated 1 path from 3618293443
+++ echo 'diff --git a/tests/servers/test_basehttp.py b/tests/servers/test_basehttp.py
+--- a/tests/servers/test_basehttp.py
++++ b/tests/servers/test_basehttp.py
+@@ -1,4 +1,5 @@
+ from io import BytesIO
++from socketserver import ThreadingMixIn
+
+ from django.core.handlers.wsgi import WSGIRequest
+ from django.core.servers.basehttp import WSGIRequestHandler, WSGIServer
+@@ -7,7 +8,7 @@
+ from django.test.utils import captured_stderr
+
+
+-class Stub:
++class Stub(ThreadingMixIn):
+     def __init__(self, **kwargs):
+         self.__dict__.update(kwargs)
+
+@@ -15,6 +16,13 @@ def sendall(self, data):
+         self.makefile("wb").write(data)
+
+
++class UnclosableBytesIO(BytesIO):
++    def close(self):
++        # WSGIRequestHandler closes the output file; we need to make this a
++        # no-op so we can still read its contents.
++        pass
++
++
+ class WSGIRequestHandlerTestCase(SimpleTestCase):
+     request_factory = RequestFactory()
+
+@@ -79,12 +87,6 @@ def test_app(environ, start_response):
+         rfile.write(b"Other_Header: bad\r\n")
+         rfile.seek(0)
+
+-        # WSGIRequestHandler closes the output file; we need to make this a
+-        # no-op so we can still read its contents.
+-        class UnclosableBytesIO(BytesIO):
+-            def close(self):
+-                pass
+-
+         wfile = UnclosableBytesIO()
+
+         def makefile(mode, *a, **kw):
+@@ -106,6 +108,59 @@ def makefile(mode, *a, **kw):
+
+         self.assertEqual(body, b"HTTP_SOME_HEADER:good")
+
++    def test_no_body_returned_for_head_requests(self):
++        hello_world_body = b"<!DOCTYPE html><html><body>Hello World</body></html>"
++        content_length = len(hello_world_body)
++
++        def test_app(environ, start_response):
++            """A WSGI app that returns a hello world."""
++            start_response("200 OK", [])
++            return [hello_world_body]
++
++        rfile = BytesIO(b"GET / HTTP/1.0\r\n")
++        rfile.seek(0)
++
++        wfile = UnclosableBytesIO()
++
++        def makefile(mode, *a, **kw):
++            if mode == "rb":
++                return rfile
++            elif mode == "wb":
++                return wfile
++
++        request = Stub(makefile=makefile)
++        server = Stub(base_environ={}, get_app=lambda: test_app)
++
++        # Prevent logging from appearing in test output.
++        with self.assertLogs("django.server", "INFO"):
++            # Instantiating a handler runs the request as side effect.
++            WSGIRequestHandler(request, "192.168.0.2", server)
++
++        wfile.seek(0)
++        lines = list(wfile.readlines())
++        body = lines[-1]
++        # The body is returned in a GET response.
++        self.assertEqual(body, hello_world_body)
++        self.assertIn(f"Content-Length: {content_length}\r\n".encode(), lines)
++        self.assertNotIn(b"Connection: close\r\n", lines)
++
++        rfile = BytesIO(b"HEAD / HTTP/1.0\r\n")
++        rfile.seek(0)
++        wfile = UnclosableBytesIO()
++
++        with self.assertLogs("django.server", "INFO"):
++            WSGIRequestHandler(request, "192.168.0.2", server)
++
++        wfile.seek(0)
++        lines = list(wfile.readlines())
++        body = lines[-1]
++        # The body is not returned in a HEAD response.
++        self.assertEqual(body, b"\r\n")
++        self.assertIs(
++            any([line.startswith(b"Content-Length:") for line in lines]), False
++        )
++        self.assertNotIn(b"Connection: close\r\n", lines)
++
+
+ class WSGIServerTestCase(SimpleTestCase):
+     request_factory = RequestFactory()
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.22F7rFSogY
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.22F7rFSogY
+++ set +x
+Testing against Django installed in '/testbed/django'
+Importing application servers
+Found 5 test(s).
+Skipping setup of unused database(s): default, other.
+System check identified no issues (0 silenced).
+test_https (servers.test_basehttp.WSGIRequestHandlerTestCase.test_https) ... ok
+test_log_message (servers.test_basehttp.WSGIRequestHandlerTestCase.test_log_message) ... ok
+test_no_body_returned_for_head_requests (servers.test_basehttp.WSGIRequestHandlerTestCase.test_no_body_returned_for_head_requests) ... FAIL
+test_strips_underscore_headers (servers.test_basehttp.WSGIRequestHandlerTestCase.test_strips_underscore_headers)
+WSGIRequestHandler ignores headers containing underscores. ... ok
+test_broken_pipe_errors (servers.test_basehttp.WSGIServerTestCase.test_broken_pipe_errors)
+WSGIServer handles broken pipe errors. ... ok
+
+======================================================================
+FAIL: test_no_body_returned_for_head_requests (servers.test_basehttp.WSGIRequestHandlerTestCase.test_no_body_returned_for_head_requests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/servers/test_basehttp.py", line 144, in test_no_body_returned_for_head_requests
+    self.assertIn(f"Content-Length: {content_length}\r\n".encode(), lines)
+AssertionError: b'Content-Length: 52\r\n' not found in [b'HTTP/1.1 200 OK\r\n', b'Date: Thu, 12 Mar 2026 21:47:08 GMT\r\n', b'Server: WSGIServer/0.2 CPython/3.11.10\r\n', b'Content-Length: 0\r\n', b'\r\n', b'<!DOCTYPE html><html><body>Hello World</body></html>']
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.003s
+
+FAILED (failures=1)
+Updated 1 path from 3618293443
+/tests/test.sh: line 221: uv: command not found

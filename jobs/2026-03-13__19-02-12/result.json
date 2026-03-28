@@ -1,0 +1,57 @@
+{
+    "id": "c03fb5c5-7df7-40c3-ac38-279615771159",
+    "started_at": "2026-03-13T19:02:12.930368",
+    "finished_at": "2026-03-13T19:23:36.279579",
+    "n_total_trials": 26,
+    "stats": {
+        "n_trials": 26,
+        "n_errors": 2,
+        "evals": {
+            "rubberduck-claude-code__claude-sonnet-4-6__swebench-verified": {
+                "n_trials": 24,
+                "n_errors": 2,
+                "metrics": [
+                    {
+                        "mean": 0.0
+                    }
+                ],
+                "reward_stats": {
+                    "reward": {
+                        "0.0": [
+                            "django__django-13512__JEZpVas",
+                            "django__django-13121__uUv3KHk",
+                            "django__django-13410__XRPCLcX",
+                            "django__django-13343__xxeew7T",
+                            "django__django-13297__WHfzDr4",
+                            "django__django-13346__trx23GS",
+                            "django__django-13363__wrb3Rne",
+                            "django__django-13128__ZVBdV7b",
+                            "django__django-13401__nbVXaUA",
+                            "django__django-13028__Y4SzbyV",
+                            "django__django-13158__GXJHhoy",
+                            "django__django-13417__rcnoqiA",
+                            "django__django-13023__68d8ai6",
+                            "django__django-13012__YjLcv84",
+                            "django__django-13109__A2gS2Lz",
+                            "django__django-13089__56YFNzd",
+                            "django__django-13033__oBbHoKr",
+                            "django__django-13344__ApxTSZB",
+                            "django__django-13406__2uqSse3",
+                            "django__django-13513__WS3aK6m",
+                            "django__django-13112__TzUX8wa",
+                            "django__django-13315__GSgSvQQ",
+                            "django__django-13212__GfzyouH",
+                            "django__django-13195__dQj9Wpa"
+                        ]
+                    }
+                },
+                "exception_stats": {
+                    "AgentSetupTimeoutError": [
+                        "django__django-13279__xRtQGft",
+                        "django__django-13449__Y3ZtDwj"
+                    ]
+                }
+            }
+        }
+    }
+}

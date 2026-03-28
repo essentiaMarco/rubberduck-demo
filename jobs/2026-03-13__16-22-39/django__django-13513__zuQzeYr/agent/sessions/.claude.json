@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "rubberduck-codebase-intelligence": {
+      "type": "http",
+      "url": "https://codebase.rubberduck.com/mcp",
+      "headers": {
+        "Authorization": "Bearer f929c93b858360ef5c53f853d3d7e1660d63e8b1cfd49b4c3661c83b0352c000"
+      }
+    },
+    "rubberduck-semantic-intelligence": {
+      "type": "http",
+      "url": "https://semantic.rubberduck.com/mcp",
+      "headers": {
+        "Authorization": "Bearer f929c93b858360ef5c53f853d3d7e1660d63e8b1cfd49b4c3661c83b0352c000"
+      }
+    }
+  },
+  "firstStartTime": "2026-03-13T23:24:16.212Z",
+  "opusProMigrationComplete": true,
+  "sonnet1m45MigrationComplete": true,
+  "clientDataCache": {
+    "data": null,
+    "timestamp": 1773444256240
+  },
+  "userID": "a8327e43b611f5d6f695d257ad9e86bfcf3d2c1a366b797f2aae2d64f31c698b",
+  "metricsStatusCache": {
+    "enabled": false,
+    "timestamp": 1773444257625
+  }
+}

@@ -1,0 +1,107 @@
+{
+    "job_name": "2026-03-12__14-45-47",
+    "jobs_dir": "jobs",
+    "n_attempts": 1,
+    "timeout_multiplier": 1.0,
+    "agent_timeout_multiplier": null,
+    "verifier_timeout_multiplier": null,
+    "agent_setup_timeout_multiplier": null,
+    "environment_build_timeout_multiplier": null,
+    "debug": false,
+    "orchestrator": {
+        "type": "local",
+        "n_concurrent_trials": 32,
+        "quiet": false,
+        "retry": {
+            "max_retries": 0,
+            "include_exceptions": null,
+            "exclude_exceptions": [
+                "VerifierTimeoutError",
+                "RewardFileEmptyError",
+                "RewardFileNotFoundError",
+                "AgentTimeoutError",
+                "VerifierOutputParseError"
+            ],
+            "wait_multiplier": 1.0,
+            "min_wait_sec": 1.0,
+            "max_wait_sec": 60.0
+        },
+        "kwargs": {}
+    },
+    "environment": {
+        "type": "daytona",
+        "import_path": null,
+        "force_build": false,
+        "delete": true,
+        "override_cpus": null,
+        "override_memory_mb": null,
+        "override_storage_mb": null,
+        "override_gpus": null,
+        "suppress_override_warnings": false,
+        "kwargs": {}
+    },
+    "verifier": {
+        "override_timeout_sec": null,
+        "max_timeout_sec": null,
+        "disable": false
+    },
+    "metrics": [],
+    "agents": [
+        {
+            "name": null,
+            "import_path": "swebench.rubberduck_agent:RubberDuckClaudeCode",
+            "model_name": "anthropic/claude-sonnet-4-6",
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "kwargs": {},
+            "env": {
+                "RUBBERDUCK_TOKEN": "${RUBBERDUCK_TOKEN}"
+            }
+        }
+    ],
+    "datasets": [
+        {
+            "task_names": [
+                "django__django-10554",
+                "django__django-10999",
+                "django__django-11087",
+                "django__django-11400",
+                "django__django-11477",
+                "django__django-11820",
+                "django__django-12273",
+                "django__django-12325",
+                "django__django-12406",
+                "django__django-13212",
+                "django__django-13513",
+                "django__django-13794",
+                "django__django-14011",
+                "django__django-14034",
+                "django__django-14155",
+                "django__django-14315",
+                "django__django-14792",
+                "django__django-15098",
+                "django__django-15252",
+                "django__django-15629",
+                "django__django-15973",
+                "django__django-16263",
+                "django__django-16502",
+                "django__django-16631",
+                "django__django-16667",
+                "django__django-16950"
+            ],
+            "exclude_task_names": null,
+            "n_tasks": null,
+            "registry": {
+                "name": null,
+                "url": "https://raw.githubusercontent.com/laude-institute/harbor/main/registry.json"
+            },
+            "name": "swebench-verified",
+            "version": "1.0",
+            "overwrite": false,
+            "download_dir": null
+        }
+    ],
+    "tasks": [],
+    "artifacts": []
+}

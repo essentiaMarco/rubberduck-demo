@@ -1,0 +1,72 @@
+{
+  "schema_version": "ATIF-v1.2",
+  "session_id": "64c25580-f951-48a9-920f-e54ffa64a994",
+  "agent": {
+    "name": "claude-code",
+    "version": "2.1.75",
+    "model_name": "<synthetic>",
+    "extra": {
+      "cwds": [
+        "/testbed"
+      ],
+      "git_branches": [
+        "main"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "step_id": 1,
+      "timestamp": "2026-03-13T21:39:07.809Z",
+      "source": "user",
+      "message": "# Task\n\nFix parse_duration() for some negative durations\nDescription\n\nThe ​https://docs.djangoproject.com/en/2.1/_modules/django/utils/dateparse/ defines:\nstandard_duration_re = re.compile(\n\tr'^'\n\tr'(?:(?P<days>-?\\d+) (days?, )?)?'\n\tr'((?:(?P<hours>-?\\d+):)(?=\\d+:\\d+))?'\n\tr'(?:(?P<minutes>-?\\d+):)?'\n\tr'(?P<seconds>-?\\d+)'\n\tr'(?:\\.(?P<microseconds>\\d{1,6})\\d{0,6})?'\n\tr'$'\n)\nthat doesn't match to negative durations, because of the <hours> definition final (lookahead) part does not have '-?' in it. The following will work:\n\tr'((?:(?P<hours>-?\\d+):)(?=-?\\d+:-?\\d+))?'\n(Thanks to Konstantin Senichev for finding the fix.)\n\n---\n\n**Repo:** `django/django`  \n**Version:** `3.0`  \n**Base commit:** `36300ef336e3f130a0dadc1143163ff3d23dc843`  \n**Instance ID:** `django__django-10999`",
+      "extra": {
+        "is_sidechain": false
+      }
+    },
+    {
+      "step_id": 2,
+      "timestamp": "2026-03-13T21:39:08.083Z",
+      "source": "agent",
+      "model_name": "<synthetic>",
+      "message": "There's an issue with the selected model (anthropic/claude-sonnet-4-6). It may not exist or you may not have access to it. Run --model to pick a different model.",
+      "metrics": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cached_tokens": 0,
+        "extra": {
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": null,
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": null,
+          "iterations": null,
+          "speed": null
+        }
+      },
+      "extra": {
+        "stop_reason": "stop_sequence",
+        "stop_sequence": "",
+        "cwd": "/testbed",
+        "is_sidechain": false
+      }
+    }
+  ],
+  "final_metrics": {
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_cached_tokens": 0,
+    "total_steps": 2,
+    "extra": {
+      "total_cache_creation_input_tokens": 0,
+      "total_cache_read_input_tokens": 0
+    }
+  }
+}

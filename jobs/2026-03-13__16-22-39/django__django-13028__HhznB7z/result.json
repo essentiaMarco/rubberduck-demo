@@ -1,0 +1,99 @@
+{
+    "id": "b85dfae3-1773-4e65-95c5-5f98e9f72962",
+    "task_name": "django__django-13028",
+    "trial_name": "django__django-13028__HhznB7z",
+    "trial_uri": "file:///Users/marcomarinucci/repos/rubberduck-demo/jobs/2026-03-13__16-22-39/django__django-13028__HhznB7z",
+    "task_id": {
+        "git_url": "https://github.com/laude-institute/harbor-datasets.git",
+        "git_commit_id": "0d48cdd78e14a1e22afa09abcfc1bf210427d66f",
+        "path": "datasets/swebench-verified/django__django-13028"
+    },
+    "source": "swebench-verified",
+    "task_checksum": "4dadb55f96f1dfa6762f5ed7de64c25c108d6dd73411cccbbcb0b01b2f5b141f",
+    "config": {
+        "task": {
+            "path": "datasets/swebench-verified/django__django-13028",
+            "git_url": "https://github.com/laude-institute/harbor-datasets.git",
+            "git_commit_id": "0d48cdd78e14a1e22afa09abcfc1bf210427d66f",
+            "overwrite": false,
+            "download_dir": null,
+            "source": "swebench-verified"
+        },
+        "trial_name": "django__django-13028__HhznB7z",
+        "trials_dir": "jobs/2026-03-13__16-22-39",
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": null,
+            "import_path": "swebench.rubberduck_agent:RubberDuckClaudeCode",
+            "model_name": "anthropic/claude-3-5-sonnet-20241022",
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "kwargs": {},
+            "env": {}
+        },
+        "environment": {
+            "type": "daytona",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "suppress_override_warnings": false,
+            "kwargs": {}
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": false
+        },
+        "artifacts": [],
+        "job_id": "04ffa1bd-fb40-4c83-8e3e-f145da0f3f75"
+    },
+    "agent_info": {
+        "name": "rubberduck-claude-code",
+        "version": "unknown",
+        "model_info": {
+            "name": "claude-3-5-sonnet-20241022",
+            "provider": "anthropic"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 0,
+        "n_cache_tokens": 0,
+        "n_output_tokens": 0,
+        "cost_usd": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 0.0
+        }
+    },
+    "exception_info": null,
+    "started_at": "2026-03-13T23:23:16.174711Z",
+    "finished_at": "2026-03-13T23:23:47.822817Z",
+    "environment_setup": {
+        "started_at": "2026-03-13T23:23:16.175882Z",
+        "finished_at": "2026-03-13T23:23:17.524011Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-03-13T23:23:17.524023Z",
+        "finished_at": "2026-03-13T23:23:33.983432Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-03-13T23:23:33.983507Z",
+        "finished_at": "2026-03-13T23:23:36.962644Z"
+    },
+    "verifier": {
+        "started_at": "2026-03-13T23:23:39.123343Z",
+        "finished_at": "2026-03-13T23:23:46.455888Z"
+    }
+}

@@ -1,0 +1,48 @@
+{
+    "task": {
+        "path": "datasets/swebench-verified/django__django-14315",
+        "git_url": "https://github.com/laude-institute/harbor-datasets.git",
+        "git_commit_id": "0d48cdd78e14a1e22afa09abcfc1bf210427d66f",
+        "overwrite": false,
+        "download_dir": null,
+        "source": "swebench-verified"
+    },
+    "trial_name": "django__django-14315__E3Kagir",
+    "trials_dir": "jobs/2026-03-12__14-45-47",
+    "timeout_multiplier": 1.0,
+    "agent_timeout_multiplier": null,
+    "verifier_timeout_multiplier": null,
+    "agent_setup_timeout_multiplier": null,
+    "environment_build_timeout_multiplier": null,
+    "agent": {
+        "name": null,
+        "import_path": "swebench.rubberduck_agent:RubberDuckClaudeCode",
+        "model_name": "anthropic/claude-sonnet-4-6",
+        "override_timeout_sec": null,
+        "override_setup_timeout_sec": null,
+        "max_timeout_sec": null,
+        "kwargs": {},
+        "env": {
+            "RUBBERDUCK_TOKEN": "${RUBBERDUCK_TOKEN}"
+        }
+    },
+    "environment": {
+        "type": "daytona",
+        "import_path": null,
+        "force_build": false,
+        "delete": true,
+        "override_cpus": null,
+        "override_memory_mb": null,
+        "override_storage_mb": null,
+        "override_gpus": null,
+        "suppress_override_warnings": false,
+        "kwargs": {}
+    },
+    "verifier": {
+        "override_timeout_sec": null,
+        "max_timeout_sec": null,
+        "disable": false
+    },
+    "artifacts": [],
+    "job_id": "3087be2d-14fd-456a-ae56-96fac8191d34"
+}

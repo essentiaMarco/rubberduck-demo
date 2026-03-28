@@ -1,0 +1,183 @@
+++ cd /testbed
+++ set +x
+++ sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
+++ locale-gen
+Generating locales (this might take a while)...
+  en_US.UTF-8... done
+Generation complete.
+++ export LANG=en_US.UTF-8
+++ LANG=en_US.UTF-8
+++ export LANGUAGE=en_US:en
+++ LANGUAGE=en_US:en
+++ export LC_ALL=en_US.UTF-8
+++ LC_ALL=en_US.UTF-8
+++ python -m pip install -e .
+Obtaining file:///testbed
+Requirement already satisfied: asgiref>=3.2.10 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (3.4.1)
+Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (2024.2)
+Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (0.4.4)
+Requirement already satisfied: typing-extensions in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from asgiref>=3.2.10->Django==3.2) (4.1.1)
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 3.2
+    Uninstalling Django-3.2:
+      Successfully uninstalled Django-3.2
+  Running setup.py develop for Django
+Successfully installed Django-3.2
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+++ git checkout 84609b3205905097d7d3038d32e6101f012c0619 tests/queryset_pickle/tests.py
+Updated 1 path from c5b733bf54
+++ echo 'diff --git a/tests/queryset_pickle/tests.py b/tests/queryset_pickle/tests.py
+--- a/tests/queryset_pickle/tests.py
++++ b/tests/queryset_pickle/tests.py
+@@ -11,7 +11,7 @@
+ class PickleabilityTestCase(TestCase):
+     @classmethod
+     def setUpTestData(cls):
+-        Happening.objects.create()  # make sure the defaults are working (#20158)
++        cls.happening = Happening.objects.create()  # make sure the defaults are working (#20158)
+
+     def assert_pickles(self, qs):
+         self.assertEqual(list(pickle.loads(pickle.dumps(qs))), list(qs))
+@@ -224,6 +224,28 @@ def test_annotation_with_callable_default(self):
+         qs = Happening.objects.annotate(latest_time=models.Max('\''when'\''))
+         self.assert_pickles(qs)
+
++    def test_annotation_values(self):
++        qs = Happening.objects.values('\''name'\'').annotate(latest_time=models.Max('\''when'\''))
++        reloaded = Happening.objects.all()
++        reloaded.query = pickle.loads(pickle.dumps(qs.query))
++        self.assertEqual(
++            reloaded.get(),
++            {'\''name'\'': '\''test'\'', '\''latest_time'\'': self.happening.when},
++        )
++
++    def test_annotation_values_list(self):
++        # values_list() is reloaded to values() when using a pickled query.
++        tests = [
++            Happening.objects.values_list('\''name'\''),
++            Happening.objects.values_list('\''name'\'', flat=True),
++            Happening.objects.values_list('\''name'\'', named=True),
++        ]
++        for qs in tests:
++            with self.subTest(qs._iterable_class.__name__):
++                reloaded = Happening.objects.all()
++                reloaded.query = pickle.loads(pickle.dumps(qs.query))
++                self.assertEqual(reloaded.get(), {'\''name'\'': '\''test'\''})
++
+     def test_filter_deferred(self):
+         qs = Happening.objects.all()
+         qs._defer_next_filter = True
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.SyrBlHyYB0
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.SyrBlHyYB0
+++ set +x
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+test_in_lookup_query_evaluation (queryset_pickle.tests.InLookupTests) ... ok
+test_in_lookup_queryset_evaluation (queryset_pickle.tests.InLookupTests) ... ok
+test_annotation_values (queryset_pickle.tests.PickleabilityTestCase) ... FAIL
+test_annotation_values_list (queryset_pickle.tests.PickleabilityTestCase) ... test_annotation_with_callable_default (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_datetime_callable_default_all (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_datetime_callable_default_filter (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_doesnotexist_class (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_doesnotexist_exception (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_filter_deferred (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_filter_reverse_fk (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_forward_relatedobjectdoesnotexist_class (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_manager_pickle (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_missing_django_version_unpickling (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_model_pickle (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_model_pickle_dynamic (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_model_pickle_m2m (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_multipleobjectsreturned_class (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_order_by_model_with_abstract_inheritance_and_meta_ordering (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_exists_kwargs_queryset_not_evaluated (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_exists_queryset_not_evaluated (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_exists_queryset_still_usable (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_prefetch_queryset_not_evaluated (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_prefetch_queryset_still_usable (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_prefetch_queryset_usable_outside_of_prefetch (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_prefetch_related_idempotence (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_prefetch_related_with_m2m_and_objects_deletion (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_pickle_subquery_queryset_not_evaluated (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_related_field (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_reverse_one_to_one_relatedobjectdoesnotexist_class (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_specialized_queryset (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_standalone_method_as_default (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_staticmethod_as_default (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_string_as_default (queryset_pickle.tests.PickleabilityTestCase) ... ok
+test_unsupported_unpickle (queryset_pickle.tests.PickleabilityTestCase) ... ok
+
+======================================================================
+FAIL: test_annotation_values (queryset_pickle.tests.PickleabilityTestCase)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/queryset_pickle/tests.py", line 233, in test_annotation_values
+    {'name': 'test', 'latest_time': self.happening.when},
+AssertionError: <queryset_pickle.models.Happening object [13 chars]8048> != {'name': 'test', 'latest_time': datetime.[37 chars]150)}
+
+======================================================================
+FAIL: test_annotation_values_list (queryset_pickle.tests.PickleabilityTestCase) [ValuesListIterable]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/queryset_pickle/tests.py", line 247, in test_annotation_values_list
+    self.assertEqual(reloaded.get(), {'name': 'test'})
+AssertionError: <queryset_pickle.models.Happening object at 0x701482288710> != {'name': 'test'}
+
+======================================================================
+FAIL: test_annotation_values_list (queryset_pickle.tests.PickleabilityTestCase) [FlatValuesListIterable]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/queryset_pickle/tests.py", line 247, in test_annotation_values_list
+    self.assertEqual(reloaded.get(), {'name': 'test'})
+AssertionError: <queryset_pickle.models.Happening object at 0x701482288860> != {'name': 'test'}
+
+======================================================================
+FAIL: test_annotation_values_list (queryset_pickle.tests.PickleabilityTestCase) [NamedValuesListIterable]
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/queryset_pickle/tests.py", line 247, in test_annotation_values_list
+    self.assertEqual(reloaded.get(), {'name': 'test'})
+AssertionError: <queryset_pickle.models.Happening object at 0x7014822889b0> != {'name': 'test'}
+
+----------------------------------------------------------------------
+Ran 35 tests in 0.044s
+
+FAILED (failures=4)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Testing against Django installed in '/testbed/django'
+Importing application queryset_pickle
+Skipping setup of unused database(s): other.
+Operations to perform:
+  Synchronize unmigrated apps: auth, contenttypes, messages, queryset_pickle, sessions, staticfiles
+  Apply all migrations: admin, sites
+Synchronizing apps without migrations:
+  Creating tables...
+    Creating table django_content_type
+    Creating table auth_permission
+    Creating table auth_group
+    Creating table auth_user
+    Creating table django_session
+    Creating table queryset_pickle_group
+    Creating table queryset_pickle_event
+    Creating table queryset_pickle_happening
+    Creating table queryset_pickle_somemodel
+    Creating table queryset_pickle_m2mmodel
+    Creating table queryset_pickle_myevent
+    Creating table queryset_pickle_edition
+    Running deferred SQL...
+Running migrations:
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+System check identified no issues (0 silenced).
+Updated 1 path from c5b733bf54
+/tests/test.sh: line 160: uv: command not found

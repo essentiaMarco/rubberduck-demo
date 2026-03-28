@@ -1,0 +1,115 @@
+++ cd /testbed
+++ set +x
+++ python -m pip install -e .
+Obtaining file:///testbed
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: asgiref>=3.3.2 in /opt/miniconda3/envs/testbed/lib/python3.8/site-packages (from Django==4.0.dev20250910114448) (3.8.1)
+Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.8/site-packages (from Django==4.0.dev20250910114448) (2024.2)
+Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.8/site-packages (from Django==4.0.dev20250910114448) (0.5.1)
+Requirement already satisfied: typing-extensions>=4 in /opt/miniconda3/envs/testbed/lib/python3.8/site-packages (from asgiref>=3.3.2->Django==4.0.dev20250910114448) (4.12.2)
+Building wheels for collected packages: Django
+  Building editable for Django (pyproject.toml): started
+  Building editable for Django (pyproject.toml): finished with status 'done'
+  Created wheel for Django: filename=django-4.0.dev20250910114448-0.editable-py3-none-any.whl size=26586 sha256=d6b128ad3a82ff9dd3beb57a45878e917f47a513e2ab4a4878bbf2eab59a5ce7
+  Stored in directory: /tmp/pip-ephem-wheel-cache-5l23onco/wheels/b2/50/f1/218f2e9962a80d01a4b1297698978f9fb3b60056aa24343f24
+Successfully built Django
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 4.0.dev20210804131800
+    Uninstalling Django-4.0.dev20210804131800:
+      Successfully uninstalled Django-4.0.dev20210804131800
+Successfully installed Django-4.0.dev20250910114448
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable.It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+++ git checkout db1fc5cd3c5d36cdb5d0fe4404efd6623dd3e8fb tests/forms_tests/field_tests/test_multivaluefield.py
+Updated 1 path from b735936f17
+++ echo 'diff --git a/tests/forms_tests/field_tests/test_multivaluefield.py b/tests/forms_tests/field_tests/test_multivaluefield.py
+--- a/tests/forms_tests/field_tests/test_multivaluefield.py
++++ b/tests/forms_tests/field_tests/test_multivaluefield.py
+@@ -10,6 +10,20 @@
+ beatles = (('\''J'\'', '\''John'\''), ('\''P'\'', '\''Paul'\''), ('\''G'\'', '\''George'\''), ('\''R'\'', '\''Ringo'\''))
+
+
++class PartiallyRequiredField(MultiValueField):
++    def compress(self, data_list):
++        return '\'','\''.join(data_list) if data_list else None
++
++
++class PartiallyRequiredForm(Form):
++    f = PartiallyRequiredField(
++        fields=(CharField(required=True), CharField(required=False)),
++        required=True,
++        require_all_fields=False,
++        widget=MultiWidget(widgets=[TextInput(), TextInput()]),
++    )
++
++
+ class ComplexMultiWidget(MultiWidget):
+     def __init__(self, attrs=None):
+         widgets = (
+@@ -172,3 +186,11 @@ def test_form_cleaned_data(self):
+         })
+         form.is_valid()
+         self.assertEqual(form.cleaned_data['\''field1'\''], '\''some text,JP,2007-04-25 06:24:00'\'')
++
++    def test_render_required_attributes(self):
++        form = PartiallyRequiredForm({'\''f_0'\'': '\''Hello'\'', '\''f_1'\'': '\'''\''})
++        self.assertTrue(form.is_valid())
++        self.assertInHTML('\''<input type="text" name="f_0" value="Hello" required id="id_f_0">'\'', form.as_p())
++        self.assertInHTML('\''<input type="text" name="f_1" id="id_f_1">'\'', form.as_p())
++        form = PartiallyRequiredForm({'\''f_0'\'': '\'''\'', '\''f_1'\'': '\'''\''})
++        self.assertFalse(form.is_valid())
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.bkcwGJZQiG
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.bkcwGJZQiG
+++ set +x
+test_bad_choice (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_clean (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_clean_disabled_multivalue (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_disabled_has_changed (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_form_as_table (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_form_as_table_data (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_form_cleaned_data (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_has_changed_first_widget (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest)
+Test when the first widget's data has changed. ... ok
+test_has_changed_last_widget (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest)
+Test when the last widget's data has changed. This ensures that it is ... ok
+test_has_changed_no_initial (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_has_changed_same (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... ok
+test_no_value (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest)
+If insufficient data is provided, None is substituted. ... ok
+test_render_required_attributes (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest) ... FAIL
+
+======================================================================
+FAIL: test_render_required_attributes (forms_tests.field_tests.test_multivaluefield.MultiValueFieldTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/forms_tests/field_tests/test_multivaluefield.py", line 194, in test_render_required_attributes
+    self.assertInHTML('<input type="text" name="f_1" id="id_f_1">', form.as_p())
+  File "/testbed/django/test/testcases.py", line 834, in assertInHTML
+    self.assertTrue(real_count != 0, msg_prefix + "Couldn't find '%s' in response" % needle)
+AssertionError: False is not true : Couldn't find '<input id="id_f_1" name="f_1" type="text">' in response
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.011s
+
+FAILED (failures=1)
+Testing against Django installed in '/testbed/django'
+Importing application forms_tests
+Found 13 test(s).
+Skipping setup of unused database(s): default, other.
+System check identified no issues (0 silenced).
+Updated 1 path from b735936f17
+/tests/test.sh: line 152: uv: command not found

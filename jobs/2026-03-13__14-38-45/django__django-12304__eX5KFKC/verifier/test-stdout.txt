@@ -1,0 +1,99 @@
+++ cd /testbed
+++ set +x
+++ sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
+++ locale-gen
+Generating locales (this might take a while)...
+  en_US.UTF-8... done
+Generation complete.
+++ export LANG=en_US.UTF-8
+++ LANG=en_US.UTF-8
+++ export LANGUAGE=en_US:en
+++ LANGUAGE=en_US:en
+++ export LC_ALL=en_US.UTF-8
+++ LC_ALL=en_US.UTF-8
+++ python -m pip install -e .
+Obtaining file:///testbed
+Requirement already satisfied: asgiref>=3.2 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.1) (3.4.1)
+Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.1) (2024.2)
+Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.1) (0.4.4)
+Requirement already satisfied: typing-extensions in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from asgiref>=3.2->Django==3.1) (4.1.1)
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 3.1
+    Uninstalling Django-3.1:
+      Successfully uninstalled Django-3.1
+  Running setup.py develop for Django
+Successfully installed Django-3.1
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+++ git checkout 4c1b401e8250f9f520b3c7dc369554477ce8b15a tests/model_enums/tests.py
+Updated 1 path from f98cedae16
+++ echo 'diff --git a/tests/model_enums/tests.py b/tests/model_enums/tests.py
+--- a/tests/model_enums/tests.py
++++ b/tests/model_enums/tests.py
+@@ -4,6 +4,7 @@
+ import uuid
+
+ from django.db import models
++from django.template import Context, Template
+ from django.test import SimpleTestCase
+ from django.utils.functional import Promise
+ from django.utils.translation import gettext_lazy as _
+@@ -149,6 +150,11 @@ def test_str(self):
+                 with self.subTest(member=member):
+                     self.assertEqual(str(test[member.name]), str(member.value))
+
++    def test_templates(self):
++        template = Template('\''{{ Suit.DIAMOND.label }}|{{ Suit.DIAMOND.value }}'\'')
++        output = template.render(Context({'\''Suit'\'': Suit}))
++        self.assertEqual(output, '\''Diamond|1'\'')
++
+
+ class Separator(bytes, models.Choices):
+     FS = b'\''\x1c'\'', '\''File Separator'\''
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.7HpQFn2zfB
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.7HpQFn2zfB
+++ set +x
+test_integerchoices (model_enums.tests.ChoicesTests) ... ok
+test_integerchoices_auto_label (model_enums.tests.ChoicesTests) ... ok
+test_integerchoices_containment (model_enums.tests.ChoicesTests) ... ok
+test_integerchoices_empty_label (model_enums.tests.ChoicesTests) ... ok
+test_integerchoices_functional_api (model_enums.tests.ChoicesTests) ... ok
+test_invalid_definition (model_enums.tests.ChoicesTests) ... ok
+test_str (model_enums.tests.ChoicesTests) ... ok
+test_templates (model_enums.tests.ChoicesTests) ... FAIL
+test_textchoices (model_enums.tests.ChoicesTests) ... ok
+test_textchoices_auto_label (model_enums.tests.ChoicesTests) ... ok
+test_textchoices_blank_value (model_enums.tests.ChoicesTests) ... ok
+test_textchoices_containment (model_enums.tests.ChoicesTests) ... ok
+test_textchoices_empty_label (model_enums.tests.ChoicesTests) ... ok
+test_textchoices_functional_api (model_enums.tests.ChoicesTests) ... ok
+test_bool_unsupported (model_enums.tests.CustomChoicesTests) ... ok
+test_labels_valid (model_enums.tests.CustomChoicesTests) ... ok
+test_timezone_unsupported (model_enums.tests.CustomChoicesTests) ... ok
+test_uuid_unsupported (model_enums.tests.CustomChoicesTests) ... ok
+
+======================================================================
+FAIL: test_templates (model_enums.tests.ChoicesTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/model_enums/tests.py", line 156, in test_templates
+    self.assertEqual(output, 'Diamond|1')
+AssertionError: '|' != 'Diamond|1'
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.003s
+
+FAILED (failures=1)
+Testing against Django installed in '/testbed/django'
+Importing application model_enums
+Skipping setup of unused database(s): default, other.
+System check identified no issues (0 silenced).
+Updated 1 path from f98cedae16
+/tests/test.sh: line 142: uv: command not found

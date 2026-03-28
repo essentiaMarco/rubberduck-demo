@@ -1,0 +1,52 @@
+{
+    "id": "3087be2d-14fd-456a-ae56-96fac8191d34",
+    "started_at": "2026-03-12T14:45:48.312051",
+    "finished_at": null,
+    "n_total_trials": 26,
+    "stats": {
+        "n_trials": 23,
+        "n_errors": 0,
+        "evals": {
+            "rubberduck-claude-code__claude-sonnet-4-6__swebench-verified": {
+                "n_trials": 23,
+                "n_errors": 0,
+                "metrics": [
+                    {
+                        "mean": 0.0
+                    }
+                ],
+                "reward_stats": {
+                    "reward": {
+                        "0.0": [
+                            "django__django-13513__Zktva3k",
+                            "django__django-10999__VmxRXuC",
+                            "django__django-16667__TJCGM7H",
+                            "django__django-13794__QGDTZXq",
+                            "django__django-15098__QKGqqSx",
+                            "django__django-15252__cTccnG9",
+                            "django__django-14011__LUGnBVd",
+                            "django__django-11400__VTVhLpP",
+                            "django__django-12325__eH4g5fM",
+                            "django__django-14315__E3Kagir",
+                            "django__django-11477__9kHdsJE",
+                            "django__django-16502__Zjikyay",
+                            "django__django-13212__R8TFoet",
+                            "django__django-14034__8ZG65q9",
+                            "django__django-16631__bBd9L6T",
+                            "django__django-12406__tVnQ3BE",
+                            "django__django-14155__C87vHQp",
+                            "django__django-15629__dvXtVQM",
+                            "django__django-14792__9fJeRTA",
+                            "django__django-11087__bXgiYxL",
+                            "django__django-11820__KeyDEWf",
+                            "django__django-12273__HVyAn2K",
+                            "django__django-15973__PUK6Txg"
+                        ]
+                    }
+                },
+                "exception_stats": {}
+            }
+        }
+    },
+    "trial_results": []
+}

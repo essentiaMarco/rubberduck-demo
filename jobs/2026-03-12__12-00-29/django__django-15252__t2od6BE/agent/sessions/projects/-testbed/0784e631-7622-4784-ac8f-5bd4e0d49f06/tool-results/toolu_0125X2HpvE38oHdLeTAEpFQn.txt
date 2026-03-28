@@ -1,0 +1,246 @@
+/testbed/django/db/backends/base/creation.py-126-                        if (
+/testbed/django/db/backends/base/creation.py-127-                            model._meta.can_migrate(self.connection) and
+django/db/backends/base/creation.py:128:                            router.allow_migrate_model(self.connection.alias, model)
+django/db/backends/base/creation.py-129-                        ):
+/testbed/django/db/backends/base/creation.py-130-                            queryset = model._base_manager.using(
+--
+/testbed/django/db/migrations/executor.py-300-            return (
+/testbed/django/db/migrations/executor.py-301-                model._meta.proxy or not model._meta.managed or not
+django/db/migrations/executor.py:302:                router.allow_migrate(
+/testbed/django/db/migrations/executor.py-303-                    self.connection.alias, migration.app_label,
+/testbed/django/db/migrations/executor.py-304-                    model_name=model._meta.model_name,
+--
+/testbed/django/db/migrations/operations/base.py-109-        return self.references_model(model_name, app_label)
+/testbed/django/db/migrations/operations/base.py-110-
+django/db/migrations/operations/base.py:111:    def allow_migrate_model(self, connection_alias, model):
+/testbed/django/db/migrations/operations/base.py-112-        """
+/testbed/django/db/migrations/operations/base.py-113-        Return whether or not a model may be migrated.
+/testbed/django/db/migrations/operations/base.py-114-
+django/db/migrations/operations/base.py:115:        This is a thin wrapper around router.allow_migrate_model() that
+/testbed/django/db/migrations/operations/base.py-116-        preemptively rejects any proxy, swapped out, or unmanaged model.
+/testbed/django/db/migrations/operations/base.py-117-        """
+--
+/testbed/django/db/migrations/operations/base.py-119-            return False
+/testbed/django/db/migrations/operations/base.py-120-
+django/db/migrations/operations/base.py:121:        return router.allow_migrate_model(connection_alias, model)
+/testbed/django/db/migrations/operations/base.py-122-
+django/db/migrations/operations/base.py-123-    def reduce(self, operation, app_label):
+--
+django/db/migrations/operations/fields.py-93-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-94-        to_model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:95:        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
+/testbed/django/db/migrations/operations/fields.py-96-            from_model = from_state.apps.get_model(app_label, self.model_name)
+/testbed/django/db/migrations/operations/fields.py-97-            field = to_model._meta.get_field(self.name)
+--
+django/db/migrations/operations/fields.py-107-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-108-        from_model = from_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:109:        if self.allow_migrate_model(schema_editor.connection.alias, from_model):
+/testbed/django/db/migrations/operations/fields.py-110-            schema_editor.remove_field(from_model, from_model._meta.get_field(self.name))
+/testbed/django/db/migrations/operations/fields.py-111-
+--
+django/db/migrations/operations/fields.py-159-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-160-        from_model = from_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:161:        if self.allow_migrate_model(schema_editor.connection.alias, from_model):
+/testbed/django/db/migrations/operations/fields.py-162-            schema_editor.remove_field(from_model, from_model._meta.get_field(self.name))
+/testbed/django/db/migrations/operations/fields.py-163-
+django/db/migrations/operations/fields.py-164-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-165-        to_model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:166:        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
+/testbed/django/db/migrations/operations/fields.py-167-            from_model = from_state.apps.get_model(app_label, self.model_name)
+/testbed/django/db/migrations/operations/fields.py-168-            schema_editor.add_field(from_model, to_model._meta.get_field(self.name))
+--
+django/db/migrations/operations/fields.py-217-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-218-        to_model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:219:        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
+/testbed/django/db/migrations/operations/fields.py-220-            from_model = from_state.apps.get_model(app_label, self.model_name)
+/testbed/django/db/migrations/operations/fields.py-221-            from_field = from_model._meta.get_field(self.name)
+--
+django/db/migrations/operations/fields.py-289-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-290-        to_model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:291:        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
+/testbed/django/db/migrations/operations/fields.py-292-            from_model = from_state.apps.get_model(app_label, self.model_name)
+/testbed/django/db/migrations/operations/fields.py-293-            schema_editor.alter_field(
+--
+django/db/migrations/operations/fields.py-299-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/fields.py-300-        to_model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/fields.py:301:        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
+/testbed/django/db/migrations/operations/fields.py-302-            from_model = from_state.apps.get_model(app_label, self.model_name)
+/testbed/django/db/migrations/operations/fields.py-303-            schema_editor.alter_field(
+--
+django/db/migrations/operations/models.py-89-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-90-        model = to_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:91:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-92-            schema_editor.create_model(model)
+/testbed/django/db/migrations/operations/models.py-93-
+django/db/migrations/operations/models.py-94-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-95-        model = from_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:96:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-97-            schema_editor.delete_model(model)
+/testbed/django/db/migrations/operations/models.py-98-
+--
+django/db/migrations/operations/models.py-266-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-267-        model = from_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:268:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-269-            schema_editor.delete_model(model)
+/testbed/django/db/migrations/operations/models.py-270-
+django/db/migrations/operations/models.py-271-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-272-        model = to_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:273:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-274-            schema_editor.create_model(model)
+/testbed/django/db/migrations/operations/models.py-275-
+--
+django/db/migrations/operations/models.py-319-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-320-        new_model = to_state.apps.get_model(app_label, self.new_name)
+django/db/migrations/operations/models.py:321:        if self.allow_migrate_model(schema_editor.connection.alias, new_model):
+/testbed/django/db/migrations/operations/models.py-322-            old_model = from_state.apps.get_model(app_label, self.old_name)
+/testbed/django/db/migrations/operations/models.py-323-            old_db_table = old_model._meta.db_table
+--
+django/db/migrations/operations/models.py-438-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-439-        new_model = to_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:440:        if self.allow_migrate_model(schema_editor.connection.alias, new_model):
+/testbed/django/db/migrations/operations/models.py-441-            old_model = from_state.apps.get_model(app_label, self.name)
+/testbed/django/db/migrations/operations/models.py-442-            schema_editor.alter_db_table(
+--
+django/db/migrations/operations/models.py-501-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-502-        new_model = to_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:503:        if self.allow_migrate_model(schema_editor.connection.alias, new_model):
+/testbed/django/db/migrations/operations/models.py-504-            old_model = from_state.apps.get_model(app_label, self.name)
+/testbed/django/db/migrations/operations/models.py-505-            alter_together = getattr(schema_editor, 'alter_%s' % self.option_name)
+--
+django/db/migrations/operations/models.py-581-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-582-        to_model = to_state.apps.get_model(app_label, self.name)
+django/db/migrations/operations/models.py:583:        if self.allow_migrate_model(schema_editor.connection.alias, to_model):
+/testbed/django/db/migrations/operations/models.py-584-            from_model = from_state.apps.get_model(app_label, self.name)
+/testbed/django/db/migrations/operations/models.py-585-            # Remove a field if we need to
+--
+django/db/migrations/operations/models.py-734-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-735-        model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:736:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-737-            schema_editor.add_index(model, self.index)
+/testbed/django/db/migrations/operations/models.py-738-
+django/db/migrations/operations/models.py-739-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-740-        model = from_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:741:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-742-            schema_editor.remove_index(model, self.index)
+/testbed/django/db/migrations/operations/models.py-743-
+--
+django/db/migrations/operations/models.py-783-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-784-        model = from_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:785:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-786-            from_model_state = from_state.models[app_label, self.model_name_lower]
+/testbed/django/db/migrations/operations/models.py-787-            index = from_model_state.get_index_by_name(self.name)
+--
+django/db/migrations/operations/models.py-790-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-791-        model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:792:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-793-            to_model_state = to_state.models[app_label, self.model_name_lower]
+/testbed/django/db/migrations/operations/models.py-794-            index = to_model_state.get_index_by_name(self.name)
+--
+django/db/migrations/operations/models.py-826-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-827-        model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:828:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-829-            schema_editor.add_constraint(model, self.constraint)
+/testbed/django/db/migrations/operations/models.py-830-
+django/db/migrations/operations/models.py-831-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-832-        model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:833:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-834-            schema_editor.remove_constraint(model, self.constraint)
+/testbed/django/db/migrations/operations/models.py-835-
+--
+django/db/migrations/operations/models.py-860-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-861-        model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:862:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-863-            from_model_state = from_state.models[app_label, self.model_name_lower]
+/testbed/django/db/migrations/operations/models.py-864-            constraint = from_model_state.get_constraint_by_name(self.name)
+--
+django/db/migrations/operations/models.py-867-    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+/testbed/django/db/migrations/operations/models.py-868-        model = to_state.apps.get_model(app_label, self.model_name)
+django/db/migrations/operations/models.py:869:        if self.allow_migrate_model(schema_editor.connection.alias, model):
+/testbed/django/db/migrations/operations/models.py-870-            to_model_state = to_state.models[app_label, self.model_name_lower]
+/testbed/django/db/migrations/operations/models.py-871-            constraint = to_model_state.get_constraint_by_name(self.name)
+--
+/testbed/django/db/migrations/operations/special.py-102-
+django/db/migrations/operations/special.py-103-    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+django/db/migrations/operations/special.py:104:        if router.allow_migrate(schema_editor.connection.alias, app_label, **self.hints):
+/testbed/django/db/migrations/operations/special.py-105-            self._run_sql(schema_editor, self.sql)
+/testbed/django/db/migrations/operations/special.py-106-
+--
+django/db/migrations/operations/special.py-108-        if self.reverse_sql is None:
+/testbed/django/db/migrations/operations/special.py-109-            raise NotImplementedError("You cannot reverse this operation")
+django/db/migrations/operations/special.py:110:        if router.allow_migrate(schema_editor.connection.alias, app_label, **self.hints):
+/testbed/django/db/migrations/operations/special.py-111-            self._run_sql(schema_editor, self.reverse_sql)
+/testbed/django/db/migrations/operations/special.py-112-
+--
+/testbed/django/db/migrations/operations/special.py-183-        # reloaded in case any are delayed.
+/testbed/django/db/migrations/operations/special.py-184-        from_state.clear_delayed_apps_cache()
+django/db/migrations/operations/special.py:185:        if router.allow_migrate(schema_editor.connection.alias, app_label, **self.hints):
+/testbed/django/db/migrations/operations/special.py-186-            # We now execute the Python code in a context that contains a 'models'
+/testbed/django/db/migrations/operations/special.py-187-            # object, representing the versioned models as an app registry.
+--
+django/db/migrations/operations/special.py-193-        if self.reverse_code is None:
+/testbed/django/db/migrations/operations/special.py-194-            raise NotImplementedError("You cannot reverse this operation")
+django/db/migrations/operations/special.py:195:        if router.allow_migrate(schema_editor.connection.alias, app_label, **self.hints):
+/testbed/django/db/migrations/operations/special.py-196-            self.reverse_code(from_state.apps, schema_editor)
+/testbed/django/db/migrations/operations/special.py-197-
+--
+/testbed/django/db/models/base.py-1698-                    )
+django/db/models/base.py-1699-        for db in databases:
+django/db/models/base.py:1700:            if not router.allow_migrate_model(db, cls):
+/testbed/django/db/models/base.py-1701-                continue
+/testbed/django/db/models/base.py-1702-            connection = connections[db]
+--
+django/db/models/base.py-1922-        for db in databases:
+/testbed/django/db/models/base.py-1923-            # skip databases where the model won't be created
+django/db/models/base.py:1924:            if not router.allow_migrate_model(db, cls):
+/testbed/django/db/models/base.py-1925-                continue
+/testbed/django/db/models/base.py-1926-            connection = connections[db]
+--
+/testbed/django/db/models/base.py-2002-        errors = []
+django/db/models/base.py-2003-        for db in databases:
+django/db/models/base.py:2004:            if not router.allow_migrate_model(db, cls):
+/testbed/django/db/models/base.py-2005-                continue
+/testbed/django/db/models/base.py-2006-            connection = connections[db]
+--
+/testbed/django/db/models/fields/__init__.py-342-        errors = []
+django/db/models/fields/__init__.py-343-        for alias in databases:
+django/db/models/fields/__init__.py:344:            if router.allow_migrate(alias, app_label, model_name=self.model._meta.model_name):
+/testbed/django/db/models/fields/__init__.py-345-                errors.extend(connections[alias].validation.check_field(self, **kwargs))
+/testbed/django/db/models/fields/__init__.py-346-        return errors
+--
+/testbed/django/db/models/fields/__init__.py-1045-        errors = []
+django/db/models/fields/__init__.py-1046-        for db in databases:
+django/db/models/fields/__init__.py:1047:            if not router.allow_migrate_model(db, self.model):
+/testbed/django/db/models/fields/__init__.py-1048-                continue
+/testbed/django/db/models/fields/__init__.py-1049-            connection = connections[db]
+--
+/testbed/django/db/models/fields/__init__.py-2134-        errors = []
+django/db/models/fields/__init__.py-2135-        for db in databases:
+django/db/models/fields/__init__.py:2136:            if not router.allow_migrate_model(db, self.model):
+/testbed/django/db/models/fields/__init__.py-2137-                continue
+/testbed/django/db/models/fields/__init__.py-2138-            connection = connections[db]
+--
+/testbed/django/db/models/fields/json.py-43-        errors = []
+django/db/models/fields/json.py-44-        for db in databases:
+django/db/models/fields/json.py:45:            if not router.allow_migrate_model(db, self.model):
+/testbed/django/db/models/fields/json.py-46-                continue
+/testbed/django/db/models/fields/json.py-47-            connection = connections[db]
+--
+/testbed/django/db/utils.py-270-        return obj1._state.db == obj2._state.db
+/testbed/django/db/utils.py-271-
+django/db/utils.py:272:    def allow_migrate(self, db, app_label, **hints):
+django/db/utils.py-273-        for router in self.routers:
+django/db/utils.py-274-            try:
+django/db/utils.py:275:                method = router.allow_migrate
+django/db/utils.py-276-            except AttributeError:
+/testbed/django/db/utils.py-277-                # If the router doesn't have a method, skip to the next one.
+--
+/testbed/django/db/utils.py-284-        return True
+/testbed/django/db/utils.py-285-
+django/db/utils.py:286:    def allow_migrate_model(self, db, model):
+django/db/utils.py:287:        return self.allow_migrate(
+/testbed/django/db/utils.py-288-            db,
+/testbed/django/db/utils.py-289-            model._meta.app_label,
+--
+/testbed/django/db/utils.py-295-        """Return app models allowed to be migrated on provided db."""
+/testbed/django/db/utils.py-296-        models = app_config.get_models(include_auto_created=include_auto_created)
+django/db/utils.py:297:        return [model for model in models if self.allow_migrate_model(db, model)]

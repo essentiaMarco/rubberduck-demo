@@ -1,0 +1,102 @@
+{
+    "id": "4fdc6223-f2d8-4e17-8615-f37d1a8b03ed",
+    "started_at": "2026-03-12T12:00:53.206451",
+    "finished_at": null,
+    "n_total_trials": 70,
+    "stats": {
+        "n_trials": 68,
+        "n_errors": 39,
+        "evals": {
+            "rubberduck-claude-code__claude-sonnet-4-6__swebench-verified": {
+                "n_trials": 29,
+                "n_errors": 39,
+                "metrics": [
+                    {
+                        "mean": 0.0
+                    }
+                ],
+                "reward_stats": {
+                    "reward": {
+                        "0.0": [
+                            "django__django-10999__VFJa8Ny",
+                            "scikit-learn__scikit-learn-25747__B3gdJSe",
+                            "astropy__astropy-8707__JEzXg2J",
+                            "django__django-12325__dmUFNrb",
+                            "django__django-15098__wgG4afX",
+                            "django__django-15252__t2od6BE",
+                            "django__django-14315__M6XsQ4q",
+                            "pylint-dev__pylint-4661__PT244Yy",
+                            "django__django-14011__9Zy9EEx",
+                            "django__django-16631__7W8ZtsB",
+                            "sympy__sympy-18763__rsBoqaa",
+                            "sympy__sympy-21930__bjuz2Dk",
+                            "astropy__astropy-13977__qt6Ruk5",
+                            "django__django-11477__nYHBbTG",
+                            "sphinx-doc__sphinx-10614__n9tiXLH",
+                            "matplotlib__matplotlib-23476__48BJAAP",
+                            "mwaskom__seaborn-3187__dyMNNhx",
+                            "django__django-13212__KUyy4cn",
+                            "django__django-11820__fL3ewKf",
+                            "django__django-12406__HJc7Evi",
+                            "sympy__sympy-20428__FzT6aYr",
+                            "sympy__sympy-20438__jXtAmQs",
+                            "sphinx-doc__sphinx-9602__c439jVS",
+                            "sympy__sympy-18199__K3GrGnr",
+                            "sphinx-doc__sphinx-7590__noVc2BW",
+                            "pylint-dev__pylint-4551__4rjqVqz",
+                            "django__django-12273__JmrTF8z",
+                            "astropy__astropy-13398__ggHybaw",
+                            "sphinx-doc__sphinx-11510__8Cn7vUd"
+                        ]
+                    }
+                },
+                "exception_stats": {
+                    "DaytonaError": [
+                        "sphinx-doc__sphinx-7462__bDgDFj2",
+                        "sphinx-doc__sphinx-10435__BaCmS7W",
+                        "matplotlib__matplotlib-26466__2aHnxnQ",
+                        "sympy__sympy-17630__KNjCuL7",
+                        "sphinx-doc__sphinx-7985__6RPxQLS",
+                        "sympy__sympy-21596__yBEjtdR",
+                        "sphinx-doc__sphinx-9229__QfhG4Zo",
+                        "django__django-15973__M9ss6fj",
+                        "sphinx-doc__sphinx-7748__UvW7cXm",
+                        "django__django-16950__KgxdHeg",
+                        "sympy__sympy-13852__rSp8BAq",
+                        "django__django-15629__k5gq4r9",
+                        "django__django-14792__Nh5nRY2",
+                        "pydata__xarray-7229__nfpnfKu",
+                        "django__django-16667__v7oChRX",
+                        "sympy__sympy-20916__XyasqNN",
+                        "pytest-dev__pytest-5840__95YBUao",
+                        "django__django-16502__khEyi8w",
+                        "django__django-11400__QFQKbWe",
+                        "astropy__astropy-8872__kwp3AR2",
+                        "django__django-13513__D5wDEYq",
+                        "django__django-11087__3DE2RhZ",
+                        "django__django-10554__YfcvXYr",
+                        "django__django-14155__ayjQ3bM",
+                        "scikit-learn__scikit-learn-26194__VZoe52C",
+                        "astropy__astropy-13033__HF7fdki",
+                        "astropy__astropy-7606__JWjqqGE",
+                        "pydata__xarray-6992__a8wPa8C",
+                        "matplotlib__matplotlib-21568__T8MLo5b",
+                        "matplotlib__matplotlib-25479__VJS8ijP",
+                        "sympy__sympy-13798__reHaY5P",
+                        "matplotlib__matplotlib-26208__5aC6iZQ",
+                        "pylint-dev__pylint-4604__oGgptog",
+                        "sympy__sympy-16597__hUTy7xo",
+                        "sympy__sympy-22080__ZArYFiJ",
+                        "django__django-13794__bVydnkQ",
+                        "sympy__sympy-17318__ReBT4mx",
+                        "django__django-14034__fZecr9B"
+                    ],
+                    "AgentSetupTimeoutError": [
+                        "matplotlib__matplotlib-23299__phb79E3"
+                    ]
+                }
+            }
+        }
+    },
+    "trial_results": []
+}

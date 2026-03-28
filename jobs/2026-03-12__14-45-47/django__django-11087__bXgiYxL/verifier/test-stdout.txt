@@ -1,0 +1,220 @@
+++ cd /testbed
+++ set +x
+++ sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
+++ locale-gen
+Generating locales (this might take a while)...
+  en_US.UTF-8... done
+Generation complete.
+++ export LANG=en_US.UTF-8
+++ LANG=en_US.UTF-8
+++ export LANGUAGE=en_US:en
+++ LANGUAGE=en_US:en
+++ export LC_ALL=en_US.UTF-8
+++ LC_ALL=en_US.UTF-8
+++ python -m pip install -e .
+Obtaining file:///testbed
+Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.0.dev20250910094539) (2024.2)
+Requirement already satisfied: sqlparse in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.0.dev20250910094539) (0.4.4)
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 3.0.dev20190417053413
+    Uninstalling Django-3.0.dev20190417053413:
+      Successfully uninstalled Django-3.0.dev20190417053413
+  Running setup.py develop for Django
+Successfully installed Django-3.0.dev20250910094539
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+++ git checkout 8180ffba21bf10f4be905cb0d4890dc2bcff2788 tests/delete/models.py tests/delete/tests.py
+Updated 2 paths from 1c79d4e861
+++ echo 'diff --git a/tests/delete/models.py b/tests/delete/models.py
+--- a/tests/delete/models.py
++++ b/tests/delete/models.py
+@@ -126,3 +126,20 @@ class Base(models.Model):
+
+ class RelToBase(models.Model):
+     base = models.ForeignKey(Base, models.DO_NOTHING)
++
++
++class Origin(models.Model):
++    pass
++
++
++class Referrer(models.Model):
++    origin = models.ForeignKey(Origin, models.CASCADE)
++    unique_field = models.IntegerField(unique=True)
++    large_field = models.TextField()
++
++
++class SecondReferrer(models.Model):
++    referrer = models.ForeignKey(Referrer, models.CASCADE)
++    other_referrer = models.ForeignKey(
++        Referrer, models.CASCADE, to_field='\''unique_field'\'', related_name='\''+'\''
++    )
+diff --git a/tests/delete/tests.py b/tests/delete/tests.py
+--- a/tests/delete/tests.py
++++ b/tests/delete/tests.py
+@@ -7,7 +7,8 @@
+
+ from .models import (
+     MR, A, Avatar, Base, Child, HiddenUser, HiddenUserProfile, M, M2MFrom,
+-    M2MTo, MRNull, Parent, R, RChild, S, T, User, create_a, get_default_r,
++    M2MTo, MRNull, Origin, Parent, R, RChild, Referrer, S, T, User, create_a,
++    get_default_r,
+ )
+
+
+@@ -437,6 +438,39 @@ def test_proxied_model_duplicate_queries(self):
+         with self.assertNumQueries(2):
+             avatar.delete()
+
++    def test_only_referenced_fields_selected(self):
++        """
++        Only referenced fields are selected during cascade deletion SELECT
++        unless deletion signals are connected.
++        """
++        origin = Origin.objects.create()
++        expected_sql = str(
++            Referrer.objects.only(
++                # Both fields are referenced by SecondReferrer.
++                '\''id'\'', '\''unique_field'\'',
++            ).filter(origin__in=[origin]).query
++        )
++        with self.assertNumQueries(2) as ctx:
++            origin.delete()
++        self.assertEqual(ctx.captured_queries[0]['\''sql'\''], expected_sql)
++
++        def receiver(instance, **kwargs):
++            pass
++
++        # All fields are selected if deletion signals are connected.
++        for signal_name in ('\''pre_delete'\'', '\''post_delete'\''):
++            with self.subTest(signal=signal_name):
++                origin = Origin.objects.create()
++                signal = getattr(models.signals, signal_name)
++                signal.connect(receiver, sender=Referrer)
++                with self.assertNumQueries(2) as ctx:
++                    origin.delete()
++                self.assertIn(
++                    connection.ops.quote_name('\''large_field'\''),
++                    ctx.captured_queries[0]['\''sql'\''],
++                )
++                signal.disconnect(receiver, sender=Referrer)
++
+
+ class FastDeleteTests(TestCase):
+
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.4PJLj8ZSub
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.4PJLj8ZSub
+++ set +x
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+test_bulk (delete.tests.DeletionTests) ... ok
+test_can_defer_constraint_checks (delete.tests.DeletionTests) ... ok
+test_cannot_defer_constraint_checks (delete.tests.DeletionTests) ... skipped 'Database has feature(s) can_defer_constraint_checks'
+test_delete_with_keeping_parents (delete.tests.DeletionTests) ... ok
+test_delete_with_keeping_parents_relationships (delete.tests.DeletionTests) ... ok
+test_deletion_order (delete.tests.DeletionTests) ... ok
+test_hidden_related (delete.tests.DeletionTests) ... ok
+test_instance_update (delete.tests.DeletionTests) ... ok
+test_large_delete (delete.tests.DeletionTests) ... ok
+test_large_delete_related (delete.tests.DeletionTests) ... ok
+test_m2m (delete.tests.DeletionTests) ... ok
+test_model_delete_returns_num_rows (delete.tests.DeletionTests) ... ok
+test_only_referenced_fields_selected (delete.tests.DeletionTests) ... FAIL
+test_proxied_model_duplicate_queries (delete.tests.DeletionTests) ... ok
+test_queryset_delete_returns_num_rows (delete.tests.DeletionTests) ... ok
+test_relational_post_delete_signals_happen_before_parent_object (delete.tests.DeletionTests) ... ok
+test_fast_delete_empty_no_update_can_self_select (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_fk (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_inheritance (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_instance_set_pk_none (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_joined_qs (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_large_batch (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_m2m (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_qs (delete.tests.FastDeleteTests) ... ok
+test_fast_delete_revm2m (delete.tests.FastDeleteTests) ... ok
+test_auto (delete.tests.OnDeleteTests) ... ok
+test_auto_nullable (delete.tests.OnDeleteTests) ... ok
+test_cascade (delete.tests.OnDeleteTests) ... ok
+test_cascade_from_child (delete.tests.OnDeleteTests) ... ok
+test_cascade_from_parent (delete.tests.OnDeleteTests) ... ok
+test_cascade_nullable (delete.tests.OnDeleteTests) ... ok
+test_do_nothing (delete.tests.OnDeleteTests) ... ok
+test_do_nothing_qscount (delete.tests.OnDeleteTests) ... ok
+test_inheritance_cascade_down (delete.tests.OnDeleteTests) ... ok
+test_inheritance_cascade_up (delete.tests.OnDeleteTests) ... ok
+test_o2o_setnull (delete.tests.OnDeleteTests) ... ok
+test_protect (delete.tests.OnDeleteTests) ... ok
+test_setdefault (delete.tests.OnDeleteTests) ... ok
+test_setdefault_none (delete.tests.OnDeleteTests) ... ok
+test_setnull (delete.tests.OnDeleteTests) ... ok
+test_setnull_from_child (delete.tests.OnDeleteTests) ... ok
+test_setnull_from_parent (delete.tests.OnDeleteTests) ... ok
+test_setvalue (delete.tests.OnDeleteTests) ... ok
+
+======================================================================
+FAIL: test_only_referenced_fields_selected (delete.tests.DeletionTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/delete/tests.py", line 455, in test_only_referenced_fields_selected
+    self.assertEqual(ctx.captured_queries[0]['sql'], expected_sql)
+AssertionError: 'SELE[41 chars]er"."origin_id" FROM "delete_referrer" WHERE "[31 chars] (1)' != 'SELE[41 chars]er"."unique_field" FROM "delete_referrer" WHER[34 chars] (1)'
+- SELECT "delete_referrer"."id", "delete_referrer"."origin_id" FROM "delete_referrer" WHERE "delete_referrer"."origin_id" IN (1)
++ SELECT "delete_referrer"."id", "delete_referrer"."unique_field" FROM "delete_referrer" WHERE "delete_referrer"."origin_id" IN (1)
+
+
+----------------------------------------------------------------------
+Ran 43 tests in 0.430s
+
+FAILED (failures=1, skipped=1)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Testing against Django installed in '/testbed/django'
+Importing application delete
+Skipping setup of unused database(s): other.
+Operations to perform:
+  Synchronize unmigrated apps: auth, contenttypes, delete, messages, sessions, staticfiles
+  Apply all migrations: admin, sites
+Synchronizing apps without migrations:
+  Creating tables...
+    Creating table django_content_type
+    Creating table auth_permission
+    Creating table auth_group
+    Creating table auth_user
+    Creating table django_session
+    Creating table delete_r
+    Creating table delete_s
+    Creating table delete_t
+    Creating table delete_u
+    Creating table delete_rchild
+    Creating table delete_a
+    Creating table delete_m
+    Creating table delete_mr
+    Creating table delete_mrnull
+    Creating table delete_avatar
+    Creating table delete_user
+    Creating table delete_hiddenuser
+    Creating table delete_hiddenuserprofile
+    Creating table delete_m2mto
+    Creating table delete_m2mfrom
+    Creating table delete_parent
+    Creating table delete_child
+    Creating table delete_base
+    Creating table delete_reltobase
+    Creating table delete_origin
+    Creating table delete_referrer
+    Creating table delete_secondreferrer
+    Running deferred SQL...
+Running migrations:
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+System check identified no issues (0 silenced).
+Updated 2 paths from 1c79d4e861
+/tests/test.sh: line 196: uv: command not found

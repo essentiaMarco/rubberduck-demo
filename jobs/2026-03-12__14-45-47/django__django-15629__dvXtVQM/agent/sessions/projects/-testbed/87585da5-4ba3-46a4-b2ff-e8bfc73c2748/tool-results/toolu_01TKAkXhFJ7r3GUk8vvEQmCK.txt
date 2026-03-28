@@ -1,0 +1,332 @@
+/testbed/django/db/backends/base/features.py-315-    # Does the backend support JSONObject() database function?
+/testbed/django/db/backends/base/features.py-316-    has_json_object_function = True
+/testbed/django/db/backends/base/features.py-317-
+django/db/backends/base/features.py:318:    # Does the backend support column collations?
+django/db/backends/base/features.py:319:    supports_collation_on_charfield = True
+django/db/backends/base/features.py:320:    supports_collation_on_textfield = True
+django/db/backends/base/features.py:321:    # Does the backend support non-deterministic collations?
+django/db/backends/base/features.py:322:    supports_non_deterministic_collations = True
+/testbed/django/db/backends/base/features.py-323-
+/testbed/django/db/backends/base/features.py-324-    # Does the backend support the logical XOR operator?
+/testbed/django/db/backends/base/features.py-325-    supports_logical_xor = False
+/testbed/django/db/backends/base/features.py-326-
+/testbed/django/db/backends/base/features.py-327-    # Collation names for use by the Django test suite.
+django/db/backends/base/features.py:328:    test_collations = {
+django/db/backends/base/features.py-329-        "ci": None,  # Case-insensitive.
+django/db/backends/base/features.py-330-        "cs": None,  # Case-sensitive.
+django/db/backends/base/features.py-331-        "non_default": None,  # Non-default.
+--
+/testbed/django/db/backends/base/introspection.py-7-FieldInfo = namedtuple(
+/testbed/django/db/backends/base/introspection.py-8-    "FieldInfo",
+/testbed/django/db/backends/base/introspection.py-9-    "name type_code display_size internal_size precision scale null_ok "
+django/db/backends/base/introspection.py:10:    "default collation",
+/testbed/django/db/backends/base/introspection.py-11-)
+/testbed/django/db/backends/base/introspection.py-12-
+/testbed/django/db/backends/base/introspection.py-13-
+--
+/testbed/django/db/backends/base/schema.py-87-    sql_alter_column_default = "ALTER COLUMN %(column)s SET DEFAULT %(default)s"
+/testbed/django/db/backends/base/schema.py-88-    sql_alter_column_no_default = "ALTER COLUMN %(column)s DROP DEFAULT"
+/testbed/django/db/backends/base/schema.py-89-    sql_alter_column_no_default_null = sql_alter_column_no_default
+django/db/backends/base/schema.py:90:    sql_alter_column_collate = "ALTER COLUMN %(column)s TYPE %(type)s%(collation)s"
+/testbed/django/db/backends/base/schema.py-91-    sql_delete_column = "ALTER TABLE %(table)s DROP COLUMN %(column)s CASCADE"
+/testbed/django/db/backends/base/schema.py-92-    sql_rename_column = (
+/testbed/django/db/backends/base/schema.py-93-        "ALTER TABLE %(table)s RENAME COLUMN %(old_column)s TO %(new_column)s"
+--
+/testbed/django/db/backends/base/schema.py-279-        self, column_db_type, params, model, field, field_db_params, include_default
+django/db/backends/base/schema.py-280-    ):
+/testbed/django/db/backends/base/schema.py-281-        yield column_db_type
+django/db/backends/base/schema.py:282:        if collation := field_db_params.get("collation"):
+django/db/backends/base/schema.py:283:            yield self._collate_sql(collation)
+/testbed/django/db/backends/base/schema.py-284-        # Work out nullability.
+/testbed/django/db/backends/base/schema.py-285-        null = field.null
+/testbed/django/db/backends/base/schema.py-286-        # Include a default value, if requested.
+--
+/testbed/django/db/backends/base/schema.py-914-        old_type_suffix = old_field.db_type_suffix(connection=self.connection)
+/testbed/django/db/backends/base/schema.py-915-        new_type_suffix = new_field.db_type_suffix(connection=self.connection)
+/testbed/django/db/backends/base/schema.py-916-        # Collation change?
+django/db/backends/base/schema.py:917:        old_collation = old_db_params.get("collation")
+django/db/backends/base/schema.py:918:        new_collation = new_db_params.get("collation")
+django/db/backends/base/schema.py:919:        if old_collation != new_collation:
+/testbed/django/db/backends/base/schema.py-920-            # Collation change handles also a type change.
+django/db/backends/base/schema.py:921:            fragment = self._alter_column_collation_sql(
+django/db/backends/base/schema.py:922:                model, new_field, new_type, new_collation
+/testbed/django/db/backends/base/schema.py-923-            )
+/testbed/django/db/backends/base/schema.py-924-            actions.append(fragment)
+/testbed/django/db/backends/base/schema.py-925-        # Type change?
+--
+/testbed/django/db/backends/base/schema.py-1182-            [],
+/testbed/django/db/backends/base/schema.py-1183-        )
+/testbed/django/db/backends/base/schema.py-1184-
+django/db/backends/base/schema.py:1185:    def _alter_column_collation_sql(self, model, new_field, new_type, new_collation):
+/testbed/django/db/backends/base/schema.py-1186-        return (
+/testbed/django/db/backends/base/schema.py-1187-            self.sql_alter_column_collate
+/testbed/django/db/backends/base/schema.py-1188-            % {
+django/db/backends/base/schema.py-1189-                "column": self.quote_name(new_field.column),
+django/db/backends/base/schema.py-1190-                "type": new_type,
+django/db/backends/base/schema.py:1191:                "collation": " " + self._collate_sql(new_collation)
+django/db/backends/base/schema.py:1192:                if new_collation
+/testbed/django/db/backends/base/schema.py-1193-                else "",
+/testbed/django/db/backends/base/schema.py-1194-            },
+/testbed/django/db/backends/base/schema.py-1195-            [],
+--
+django/db/backends/base/schema.py-1676-    def _delete_primary_key_sql(self, model, name):
+/testbed/django/db/backends/base/schema.py-1677-        return self._delete_constraint_sql(self.sql_delete_pk, model, name)
+/testbed/django/db/backends/base/schema.py-1678-
+django/db/backends/base/schema.py:1679:    def _collate_sql(self, collation):
+django/db/backends/base/schema.py:1680:        return "COLLATE " + self.quote_name(collation)
+/testbed/django/db/backends/base/schema.py-1681-
+django/db/backends/base/schema.py-1682-    def remove_procedure(self, procedure_name, param_types=()):
+/testbed/django/db/backends/base/schema.py-1683-        sql = self.sql_delete_procedure % {
+--
+/testbed/django/db/backends/mysql/features.py-68-        return ""
+/testbed/django/db/backends/mysql/features.py-69-
+/testbed/django/db/backends/mysql/features.py-70-    @cached_property
+django/db/backends/mysql/features.py:71:    def test_collations(self):
+/testbed/django/db/backends/mysql/features.py-72-        charset = "utf8"
+/testbed/django/db/backends/mysql/features.py-73-        if self.connection.mysql_is_mariadb and self.connection.mysql_version >= (
+/testbed/django/db/backends/mysql/features.py-74-            10,
+--
+/testbed/django/db/backends/mysql/introspection.py-15-InfoLine = namedtuple(
+/testbed/django/db/backends/mysql/introspection.py-16-    "InfoLine",
+/testbed/django/db/backends/mysql/introspection.py-17-    "col_name data_type max_len num_prec num_scale extra column_default "
+django/db/backends/mysql/introspection.py:18:    "collation is_unsigned",
+/testbed/django/db/backends/mysql/introspection.py-19-)
+/testbed/django/db/backends/mysql/introspection.py-20-
+/testbed/django/db/backends/mysql/introspection.py-21-
+--
+/testbed/django/db/backends/mysql/introspection.py-99-                [table_name],
+/testbed/django/db/backends/mysql/introspection.py-100-            )
+/testbed/django/db/backends/mysql/introspection.py-101-            json_constraints = {row[0] for row in cursor.fetchall()}
+django/db/backends/mysql/introspection.py:102:        # A default collation for the given table.
+/testbed/django/db/backends/mysql/introspection.py-103-        cursor.execute(
+/testbed/django/db/backends/mysql/introspection.py-104-            """
+django/db/backends/mysql/introspection.py:105:            SELECT  table_collation
+/testbed/django/db/backends/mysql/introspection.py-106-            FROM    information_schema.tables
+/testbed/django/db/backends/mysql/introspection.py-107-            WHERE   table_schema = DATABASE()
+/testbed/django/db/backends/mysql/introspection.py-108-            AND     table_name = %s
+--
+/testbed/django/db/backends/mysql/introspection.py-110-            [table_name],
+/testbed/django/db/backends/mysql/introspection.py-111-        )
+/testbed/django/db/backends/mysql/introspection.py-112-        row = cursor.fetchone()
+django/db/backends/mysql/introspection.py:113:        default_column_collation = row[0] if row else ""
+django/db/backends/mysql/introspection.py-114-        # information_schema database gives more accurate results for some figures:
+/testbed/django/db/backends/mysql/introspection.py-115-        # - varchar length returned by cursor.description is an internal length,
+/testbed/django/db/backends/mysql/introspection.py-116-        #   not visible length (#5725)
+--
+/testbed/django/db/backends/mysql/introspection.py-122-                column_name, data_type, character_maximum_length,
+/testbed/django/db/backends/mysql/introspection.py-123-                numeric_precision, numeric_scale, extra, column_default,
+/testbed/django/db/backends/mysql/introspection.py-124-                CASE
+django/db/backends/mysql/introspection.py:125:                    WHEN collation_name = %s THEN NULL
+django/db/backends/mysql/introspection.py:126:                    ELSE collation_name
+django/db/backends/mysql/introspection.py:127:                END AS collation_name,
+/testbed/django/db/backends/mysql/introspection.py-128-                CASE
+/testbed/django/db/backends/mysql/introspection.py-129-                    WHEN column_type LIKE '%% unsigned' THEN 1
+/testbed/django/db/backends/mysql/introspection.py-130-                    ELSE 0
+--
+/testbed/django/db/backends/mysql/introspection.py-132-            FROM information_schema.columns
+/testbed/django/db/backends/mysql/introspection.py-133-            WHERE table_name = %s AND table_schema = DATABASE()
+/testbed/django/db/backends/mysql/introspection.py-134-            """,
+django/db/backends/mysql/introspection.py:135:            [default_column_collation, table_name],
+/testbed/django/db/backends/mysql/introspection.py-136-        )
+django/db/backends/mysql/introspection.py-137-        field_info = {line[0]: InfoLine(*line) for line in cursor.fetchall()}
+/testbed/django/db/backends/mysql/introspection.py-138-
+--
+/testbed/django/db/backends/mysql/introspection.py-154-                    to_int(info.num_scale) or line[5],
+/testbed/django/db/backends/mysql/introspection.py-155-                    line[6],
+/testbed/django/db/backends/mysql/introspection.py-156-                    info.column_default,
+django/db/backends/mysql/introspection.py:157:                    info.collation,
+/testbed/django/db/backends/mysql/introspection.py-158-                    info.extra,
+/testbed/django/db/backends/mysql/introspection.py-159-                    info.is_unsigned,
+/testbed/django/db/backends/mysql/introspection.py-160-                    line[0] in json_constraints,
+--
+/testbed/django/db/backends/mysql/schema.py-9-    sql_alter_column_null = "MODIFY %(column)s %(type)s NULL"
+/testbed/django/db/backends/mysql/schema.py-10-    sql_alter_column_not_null = "MODIFY %(column)s %(type)s NOT NULL"
+/testbed/django/db/backends/mysql/schema.py-11-    sql_alter_column_type = "MODIFY %(column)s %(type)s"
+django/db/backends/mysql/schema.py:12:    sql_alter_column_collate = "MODIFY %(column)s %(type)s%(collation)s"
+/testbed/django/db/backends/mysql/schema.py-13-    sql_alter_column_no_default_null = "ALTER COLUMN %(column)s SET DEFAULT NULL"
+/testbed/django/db/backends/mysql/schema.py-14-
+/testbed/django/db/backends/mysql/schema.py-15-    # No 'CASCADE' which works as a no-op in MySQL but is undocumented
+--
+/testbed/django/db/backends/oracle/features.py-65-    supports_boolean_expr_in_select_clause = False
+/testbed/django/db/backends/oracle/features.py-66-    supports_primitives_in_json_field = False
+/testbed/django/db/backends/oracle/features.py-67-    supports_json_field_contains = False
+django/db/backends/oracle/features.py:68:    supports_collation_on_textfield = False
+django/db/backends/oracle/features.py:69:    test_collations = {
+django/db/backends/oracle/features.py-70-        "ci": "BINARY_CI",
+django/db/backends/oracle/features.py-71-        "cs": "BINARY",
+django/db/backends/oracle/features.py-72-        "non_default": "SWEDISH_CI",
+--
+/testbed/django/db/backends/oracle/features.py-125-        }
+/testbed/django/db/backends/oracle/features.py-126-
+/testbed/django/db/backends/oracle/features.py-127-    @cached_property
+django/db/backends/oracle/features.py:128:    def supports_collation_on_charfield(self):
+django/db/backends/oracle/features.py-129-        with self.connection.cursor() as cursor:
+django/db/backends/oracle/features.py-130-            try:
+/testbed/django/db/backends/oracle/features.py-131-                cursor.execute("SELECT CAST('a' AS VARCHAR2(4001)) FROM dual")
+--
+/testbed/django/db/backends/oracle/introspection.py-108-                user_tab_cols.column_name,
+/testbed/django/db/backends/oracle/introspection.py-109-                user_tab_cols.data_default,
+/testbed/django/db/backends/oracle/introspection.py-110-                CASE
+django/db/backends/oracle/introspection.py:111:                    WHEN user_tab_cols.collation = user_tables.default_collation
+/testbed/django/db/backends/oracle/introspection.py-112-                    THEN NULL
+django/db/backends/oracle/introspection.py:113:                    ELSE user_tab_cols.collation
+django/db/backends/oracle/introspection.py:114:                END collation,
+/testbed/django/db/backends/oracle/introspection.py-115-                CASE
+/testbed/django/db/backends/oracle/introspection.py-116-                    WHEN user_tab_cols.char_used IS NULL
+/testbed/django/db/backends/oracle/introspection.py-117-                    THEN user_tab_cols.data_length
+--
+django/db/backends/oracle/introspection.py-143-            column: (
+/testbed/django/db/backends/oracle/introspection.py-144-                internal_size,
+/testbed/django/db/backends/oracle/introspection.py-145-                default if default != "NULL" else None,
+django/db/backends/oracle/introspection.py:146:                collation,
+/testbed/django/db/backends/oracle/introspection.py-147-                is_autofield,
+/testbed/django/db/backends/oracle/introspection.py-148-                is_json,
+/testbed/django/db/backends/oracle/introspection.py-149-            )
+/testbed/django/db/backends/oracle/introspection.py-150-            for (
+/testbed/django/db/backends/oracle/introspection.py-151-                column,
+/testbed/django/db/backends/oracle/introspection.py-152-                default,
+django/db/backends/oracle/introspection.py:153:                collation,
+/testbed/django/db/backends/oracle/introspection.py-154-                internal_size,
+/testbed/django/db/backends/oracle/introspection.py-155-                is_autofield,
+/testbed/django/db/backends/oracle/introspection.py-156-                is_json,
+--
+/testbed/django/db/backends/oracle/introspection.py-165-        description = []
+django/db/backends/oracle/introspection.py-166-        for desc in cursor.description:
+/testbed/django/db/backends/oracle/introspection.py-167-            name = desc[0]
+django/db/backends/oracle/introspection.py:168:            internal_size, default, collation, is_autofield, is_json = field_map[name]
+/testbed/django/db/backends/oracle/introspection.py-169-            name = name % {}  # cx_Oracle, for some reason, doubles percent signs.
+/testbed/django/db/backends/oracle/introspection.py-170-            description.append(
+/testbed/django/db/backends/oracle/introspection.py-171-                FieldInfo(
+--
+/testbed/django/db/backends/oracle/introspection.py-176-                    desc[5] or 0,
+django/db/backends/oracle/introspection.py-177-                    *desc[6:],
+/testbed/django/db/backends/oracle/introspection.py-178-                    default,
+django/db/backends/oracle/introspection.py:179:                    collation,
+/testbed/django/db/backends/oracle/introspection.py-180-                    is_autofield,
+/testbed/django/db/backends/oracle/introspection.py-181-                    is_json,
+/testbed/django/db/backends/oracle/introspection.py-182-                )
+--
+/testbed/django/db/backends/oracle/schema.py-19-    sql_alter_column_default = "MODIFY %(column)s DEFAULT %(default)s"
+/testbed/django/db/backends/oracle/schema.py-20-    sql_alter_column_no_default = "MODIFY %(column)s DEFAULT NULL"
+/testbed/django/db/backends/oracle/schema.py-21-    sql_alter_column_no_default_null = sql_alter_column_no_default
+django/db/backends/oracle/schema.py:22:    sql_alter_column_collate = "MODIFY %(column)s %(type)s%(collation)s"
+/testbed/django/db/backends/oracle/schema.py-23-
+/testbed/django/db/backends/oracle/schema.py-24-    sql_delete_column = "ALTER TABLE %(table)s DROP COLUMN %(column)s"
+/testbed/django/db/backends/oracle/schema.py-25-    sql_create_column_inline_fk = (
+--
+django/db/backends/oracle/schema.py-91-            elif "ORA-30673" in description and old_field.primary_key:
+/testbed/django/db/backends/oracle/schema.py-92-                self._delete_primary_key(model, strict=True)
+/testbed/django/db/backends/oracle/schema.py-93-                self._alter_field_type_workaround(model, old_field, new_field)
+django/db/backends/oracle/schema.py:94:            # If a collation is changing on a primary key, drop the primary key
+/testbed/django/db/backends/oracle/schema.py-95-            # first.
+django/db/backends/oracle/schema.py-96-            elif "ORA-43923" in description and old_field.primary_key:
+/testbed/django/db/backends/oracle/schema.py-97-                self._delete_primary_key(model, strict=True)
+--
+/testbed/django/db/backends/oracle/schema.py-232-            }
+/testbed/django/db/backends/oracle/schema.py-233-        )
+/testbed/django/db/backends/oracle/schema.py-234-
+django/db/backends/oracle/schema.py:235:    def _get_default_collation(self, table_name):
+django/db/backends/oracle/schema.py-236-        with self.connection.cursor() as cursor:
+/testbed/django/db/backends/oracle/schema.py-237-            cursor.execute(
+/testbed/django/db/backends/oracle/schema.py-238-                """
+django/db/backends/oracle/schema.py:239:                SELECT default_collation FROM user_tables WHERE table_name = %s
+/testbed/django/db/backends/oracle/schema.py-240-                """,
+/testbed/django/db/backends/oracle/schema.py-241-                [self.normalize_name(table_name)],
+/testbed/django/db/backends/oracle/schema.py-242-            )
+/testbed/django/db/backends/oracle/schema.py-243-            return cursor.fetchone()[0]
+/testbed/django/db/backends/oracle/schema.py-244-
+django/db/backends/oracle/schema.py:245:    def _alter_column_collation_sql(self, model, new_field, new_type, new_collation):
+django/db/backends/oracle/schema.py:246:        if new_collation is None:
+django/db/backends/oracle/schema.py:247:            new_collation = self._get_default_collation(model._meta.db_table)
+django/db/backends/oracle/schema.py:248:        return super()._alter_column_collation_sql(
+django/db/backends/oracle/schema.py:249:            model, new_field, new_type, new_collation
+/testbed/django/db/backends/oracle/schema.py-250-        )
+--
+/testbed/django/db/backends/postgresql/creation.py-23-        test_settings = self.connection.settings_dict["TEST"]
+django/db/backends/postgresql/creation.py-24-        if test_settings.get("COLLATION") is not None:
+/testbed/django/db/backends/postgresql/creation.py-25-            raise ImproperlyConfigured(
+django/db/backends/postgresql/creation.py:26:                "PostgreSQL does not support collation setting at database "
+/testbed/django/db/backends/postgresql/creation.py-27-                "creation time."
+/testbed/django/db/backends/postgresql/creation.py-28-            )
+/testbed/django/db/backends/postgresql/creation.py-29-        return self._get_database_create_suffix(
+--
+/testbed/django/db/backends/postgresql/features.py-59-    json_key_contains_list_matching_requires_list = True
+/testbed/django/db/backends/postgresql/features.py-60-    supports_update_conflicts = True
+/testbed/django/db/backends/postgresql/features.py-61-    supports_update_conflicts_with_target = True
+django/db/backends/postgresql/features.py:62:    test_collations = {
+django/db/backends/postgresql/features.py-63-        "non_default": "sv-x-icu",
+django/db/backends/postgresql/features.py-64-        "swedish_ci": "sv-x-icu",
+/testbed/django/db/backends/postgresql/features.py-65-    }
+--
+/testbed/django/db/backends/postgresql/features.py-102-    supports_covering_indexes = property(operator.attrgetter("is_postgresql_11"))
+/testbed/django/db/backends/postgresql/features.py-103-    supports_covering_gist_indexes = property(operator.attrgetter("is_postgresql_12"))
+/testbed/django/db/backends/postgresql/features.py-104-    supports_covering_spgist_indexes = property(operator.attrgetter("is_postgresql_14"))
+django/db/backends/postgresql/features.py:105:    supports_non_deterministic_collations = property(
+/testbed/django/db/backends/postgresql/features.py-106-        operator.attrgetter("is_postgresql_12")
+/testbed/django/db/backends/postgresql/features.py-107-    )
+--
+/testbed/django/db/backends/postgresql/introspection.py-90-                a.attname AS column_name,
+/testbed/django/db/backends/postgresql/introspection.py-91-                NOT (a.attnotnull OR (t.typtype = 'd' AND t.typnotnull)) AS is_nullable,
+/testbed/django/db/backends/postgresql/introspection.py-92-                pg_get_expr(ad.adbin, ad.adrelid) AS column_default,
+django/db/backends/postgresql/introspection.py:93:                CASE WHEN collname = 'default' THEN NULL ELSE collname END AS collation,
+/testbed/django/db/backends/postgresql/introspection.py-94-                a.attidentity != '' AS is_autofield
+/testbed/django/db/backends/postgresql/introspection.py-95-            FROM pg_attribute a
+/testbed/django/db/backends/postgresql/introspection.py-96-            LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
+django/db/backends/postgresql/introspection.py:97:            LEFT JOIN pg_collation co ON a.attcollation = co.oid
+/testbed/django/db/backends/postgresql/introspection.py-98-            JOIN pg_type t ON a.atttypid = t.oid
+/testbed/django/db/backends/postgresql/introspection.py-99-            JOIN pg_class c ON a.attrelid = c.oid
+/testbed/django/db/backends/postgresql/introspection.py-100-            JOIN pg_namespace n ON c.relnamespace = n.oid
+--
+/testbed/django/db/backends/sqlite3/features.py-45-    supports_json_field_contains = False
+/testbed/django/db/backends/sqlite3/features.py-46-    supports_update_conflicts = Database.sqlite_version_info >= (3, 24, 0)
+/testbed/django/db/backends/sqlite3/features.py-47-    supports_update_conflicts_with_target = supports_update_conflicts
+django/db/backends/sqlite3/features.py:48:    test_collations = {
+django/db/backends/sqlite3/features.py-49-        "ci": "nocase",
+django/db/backends/sqlite3/features.py-50-        "cs": "binary",
+django/db/backends/sqlite3/features.py-51-        "non_default": "nocase",
+--
+/testbed/django/db/backends/sqlite3/introspection.py-96-        table_info = cursor.fetchall()
+django/db/backends/sqlite3/introspection.py-97-        if not table_info:
+/testbed/django/db/backends/sqlite3/introspection.py-98-            raise DatabaseError(f"Table {table_name} does not exist (empty pragma).")
+django/db/backends/sqlite3/introspection.py:99:        collations = self._get_column_collations(cursor, table_name)
+/testbed/django/db/backends/sqlite3/introspection.py-100-        json_columns = set()
+django/db/backends/sqlite3/introspection.py-101-        if self.connection.features.can_introspect_json_field:
+django/db/backends/sqlite3/introspection.py-102-            for line in table_info:
+--
+/testbed/django/db/backends/sqlite3/introspection.py-125-                None,
+/testbed/django/db/backends/sqlite3/introspection.py-126-                not notnull,
+/testbed/django/db/backends/sqlite3/introspection.py-127-                default,
+django/db/backends/sqlite3/introspection.py:128:                collations.get(name),
+/testbed/django/db/backends/sqlite3/introspection.py-129-                pk == 1,
+/testbed/django/db/backends/sqlite3/introspection.py-130-                name in json_columns,
+/testbed/django/db/backends/sqlite3/introspection.py-131-            )
+--
+/testbed/django/db/backends/sqlite3/introspection.py-410-                return ["DESC" if info.endswith("DESC") else "ASC" for info in columns]
+/testbed/django/db/backends/sqlite3/introspection.py-411-        return None
+/testbed/django/db/backends/sqlite3/introspection.py-412-
+django/db/backends/sqlite3/introspection.py:413:    def _get_column_collations(self, cursor, table_name):
+/testbed/django/db/backends/sqlite3/introspection.py-414-        row = cursor.execute(
+/testbed/django/db/backends/sqlite3/introspection.py-415-            """
+/testbed/django/db/backends/sqlite3/introspection.py-416-            SELECT sql
+--
+/testbed/django/db/backends/sqlite3/introspection.py-424-
+/testbed/django/db/backends/sqlite3/introspection.py-425-        sql = row[0]
+/testbed/django/db/backends/sqlite3/introspection.py-426-        columns = str(sqlparse.parse(sql)[0][-1]).strip("()").split(", ")
+django/db/backends/sqlite3/introspection.py:427:        collations = {}
+django/db/backends/sqlite3/introspection.py-428-        for column in columns:
+django/db/backends/sqlite3/introspection.py-429-            tokens = column[1:].split()
+/testbed/django/db/backends/sqlite3/introspection.py-430-            column_name = tokens[0].strip('"')
+django/db/backends/sqlite3/introspection.py-431-            for index, token in enumerate(tokens):
+django/db/backends/sqlite3/introspection.py-432-                if token == "COLLATE":
+django/db/backends/sqlite3/introspection.py:433:                    collation = tokens[index + 1]
+/testbed/django/db/backends/sqlite3/introspection.py-434-                    break
+django/db/backends/sqlite3/introspection.py-435-            else:
+django/db/backends/sqlite3/introspection.py:436:                collation = None
+django/db/backends/sqlite3/introspection.py:437:            collations[column_name] = collation
+django/db/backends/sqlite3/introspection.py:438:        return collations
+--
+django/db/backends/sqlite3/schema.py-551-        else:
+/testbed/django/db/backends/sqlite3/schema.py-552-            self._remake_table(model)
+/testbed/django/db/backends/sqlite3/schema.py-553-
+django/db/backends/sqlite3/schema.py:554:    def _collate_sql(self, collation):
+django/db/backends/sqlite3/schema.py:555:        return "COLLATE " + collation

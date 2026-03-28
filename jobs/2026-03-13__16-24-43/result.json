@@ -1,0 +1,29 @@
+{
+    "id": "78bbb49b-bc59-46c3-bf6a-78c7ddc06833",
+    "started_at": "2026-03-13T16:24:43.948079",
+    "finished_at": "2026-03-13T16:25:16.619281",
+    "n_total_trials": 1,
+    "stats": {
+        "n_trials": 1,
+        "n_errors": 0,
+        "evals": {
+            "rubberduck-claude-code__claude-3-5-sonnet-20241022__swebench-verified": {
+                "n_trials": 1,
+                "n_errors": 0,
+                "metrics": [
+                    {
+                        "mean": 0.0
+                    }
+                ],
+                "reward_stats": {
+                    "reward": {
+                        "0.0": [
+                            "django__django-10554__DgVtURM"
+                        ]
+                    }
+                },
+                "exception_stats": {}
+            }
+        }
+    }
+}

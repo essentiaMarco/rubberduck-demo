@@ -1,0 +1,12 @@
+mkdir -p $CLAUDE_CONFIG_DIR/debug $CLAUDE_CONFIG_DIR/projects/-app $CLAUDE_CONFIG_DIR/shell-snapshots $CLAUDE_CONFIG_DIR/statsig $CLAUDE_CONFIG_DIR/todos && if [ -d ~/.claude/skills ]; then cp -r ~/.claude/skills $CLAUDE_CONFIG_DIR/skills 2>/dev/null || true; fi && echo 'import json, os
+p = os.environ['"'"'CLAUDE_CONFIG_DIR'"'"'] + '"'"'/.claude.json'"'"'
+cfg = json.load(open(p)) if os.path.exists(p) else {}
+token = os.environ.get('"'"'RUBBERDUCK_TOKEN'"'"', '"'"''"'"')
+if not token or token == '"'"'${RUBBERDUCK_TOKEN}'"'"':
+    token = '"'"'f929c93b858360ef5c53f853d3d7e1660d63e8b1cfd49b4c3661c83b0352c000'"'"'
+cfg.setdefault('"'"'mcpServers'"'"', {}).update({
+    "rubberduck-codebase-intelligence": {'"'"'type'"'"': "http", '"'"'url'"'"': "https://codebase.rubberduck.com/mcp", '"'"'headers'"'"': {'"'"'Authorization'"'"': '"'"'Bearer '"'"' + token}},
+    "rubberduck-semantic-intelligence": {'"'"'type'"'"': "http", '"'"'url'"'"': "https://semantic.rubberduck.com/mcp", '"'"'headers'"'"': {'"'"'Authorization'"'"': '"'"'Bearer '"'"' + token}},
+})
+json.dump(cfg, open(p, '"'"'w'"'"'), indent=2)
+' | python3

@@ -1,0 +1,163 @@
+++ cd /testbed
+++ set +x
+++ sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen
+++ locale-gen
+Generating locales (this might take a while)...
+  en_US.UTF-8... done
+Generation complete.
+++ export LANG=en_US.UTF-8
+++ LANG=en_US.UTF-8
+++ export LANGUAGE=en_US:en
+++ LANGUAGE=en_US:en
+++ export LC_ALL=en_US.UTF-8
+++ LC_ALL=en_US.UTF-8
+++ python -m pip install -e .
+Obtaining file:///testbed
+Requirement already satisfied: asgiref>=3.2.10 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (3.4.1)
+Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (2024.2)
+Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.2) (0.4.4)
+Requirement already satisfied: typing-extensions in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from asgiref>=3.2.10->Django==3.2) (4.1.1)
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 3.2
+    Uninstalling Django-3.2:
+      Successfully uninstalled Django-3.2
+  Running setup.py develop for Django
+Successfully installed Django-3.2
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+++ git checkout fe886eee36be8022f34cfe59aa61ff1c21fe01d9 tests/template_tests/filter_tests/test_add.py tests/utils_tests/test_functional.py
+Updated 2 paths from 64ee9d3cf6
+++ echo 'diff --git a/tests/template_tests/filter_tests/test_add.py b/tests/template_tests/filter_tests/test_add.py
+--- a/tests/template_tests/filter_tests/test_add.py
++++ b/tests/template_tests/filter_tests/test_add.py
+@@ -2,6 +2,7 @@
+
+ from django.template.defaultfilters import add
+ from django.test import SimpleTestCase
++from django.utils.translation import gettext_lazy
+
+ from ..utils import setup
+
+@@ -46,6 +47,22 @@ def test_add07(self):
+         output = self.engine.render_to_string('\''add07'\'', {'\''d'\'': date(2000, 1, 1), '\''t'\'': timedelta(10)})
+         self.assertEqual(output, '\''Jan. 11, 2000'\'')
+
++    @setup({'\''add08'\'': '\''{{ s1|add:lazy_s2 }}'\''})
++    def test_add08(self):
++        output = self.engine.render_to_string(
++            '\''add08'\'',
++            {'\''s1'\'': '\''string'\'', '\''lazy_s2'\'': gettext_lazy('\''lazy'\'')},
++        )
++        self.assertEqual(output, '\''stringlazy'\'')
++
++    @setup({'\''add09'\'': '\''{{ lazy_s1|add:lazy_s2 }}'\''})
++    def test_add09(self):
++        output = self.engine.render_to_string(
++            '\''add09'\'',
++            {'\''lazy_s1'\'': gettext_lazy('\''string'\''), '\''lazy_s2'\'': gettext_lazy('\''lazy'\'')},
++        )
++        self.assertEqual(output, '\''stringlazy'\'')
++
+
+ class FunctionTests(SimpleTestCase):
+
+diff --git a/tests/utils_tests/test_functional.py b/tests/utils_tests/test_functional.py
+--- a/tests/utils_tests/test_functional.py
++++ b/tests/utils_tests/test_functional.py
+@@ -184,6 +184,11 @@ class Foo:
+         with self.assertRaisesMessage(TypeError, msg):
+             Foo().cp
+
++    def test_lazy_add(self):
++        lazy_4 = lazy(lambda: 4, int)
++        lazy_5 = lazy(lambda: 5, int)
++        self.assertEqual(lazy_4() + lazy_5(), 9)
++
+     def test_lazy_equality(self):
+         """
+         == and != work correctly for Promises.
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.YkEVzvNnvj
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.YkEVzvNnvj
+++ set +x
+Testing against Django installed in '/testbed/django'
+Importing application template_tests
+Importing application utils_tests
+Skipping setup of unused database(s): default, other.
+System check identified no issues (0 silenced).
+test_add01 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add02 (template_tests.filter_tests.test_add.AddTests) ... FAIL
+test_add03 (template_tests.filter_tests.test_add.AddTests) ... FAIL
+test_add04 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add05 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add06 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add07 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add08 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add09 (template_tests.filter_tests.test_add.AddTests) ... ok
+test_add (template_tests.filter_tests.test_add.FunctionTests) ... ok
+test_cached_property (utils_tests.test_functional.FunctionalTests)
+cached_property caches its value and behaves like a property. ... ok
+test_cached_property_auto_name (utils_tests.test_functional.FunctionalTests) ... ok
+test_cached_property_reuse_different_names (utils_tests.test_functional.FunctionalTests)
+Disallow this case because the decorated function wouldn't be cached. ... ok
+test_cached_property_reuse_same_name (utils_tests.test_functional.FunctionalTests) ... ok
+test_cached_property_set_name_not_called (utils_tests.test_functional.FunctionalTests) ... ok
+test_classproperty_getter (utils_tests.test_functional.FunctionalTests) ... ok
+test_classproperty_override_getter (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy_add (utils_tests.test_functional.FunctionalTests) ... ERROR
+test_lazy_base_class (utils_tests.test_functional.FunctionalTests)
+lazy also finds base class methods in the proxy object ... ok
+test_lazy_base_class_override (utils_tests.test_functional.FunctionalTests)
+lazy finds the correct (overridden) method implementation ... ok
+test_lazy_class_preparation_caching (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy_equality (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy_object_to_string (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy_repr_bytes (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy_repr_int (utils_tests.test_functional.FunctionalTests) ... ok
+test_lazy_repr_text (utils_tests.test_functional.FunctionalTests) ... ok
+
+======================================================================
+ERROR: test_lazy_add (utils_tests.test_functional.FunctionalTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/utils_tests/test_functional.py", line 190, in test_lazy_add
+    self.assertEqual(lazy_4() + lazy_5(), 9)
+TypeError: unsupported operand type(s) for +: '__proxy__' and '__proxy__'
+
+======================================================================
+FAIL: test_add02 (template_tests.filter_tests.test_add.AddTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/django/test/utils.py", line 382, in inner
+    return func(*args, **kwargs)
+  File "/testbed/tests/template_tests/utils.py", line 55, in inner
+    func(self)
+  File "/testbed/tests/template_tests/filter_tests/test_add.py", line 23, in test_add02
+    self.assertEqual(output, '')
+AssertionError: '2000napis' != ''
+
+======================================================================
+FAIL: test_add03 (template_tests.filter_tests.test_add.AddTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/django/test/utils.py", line 382, in inner
+    return func(*args, **kwargs)
+  File "/testbed/tests/template_tests/utils.py", line 55, in inner
+    func(self)
+  File "/testbed/tests/template_tests/filter_tests/test_add.py", line 28, in test_add03
+    self.assertEqual(output, '')
+AssertionError: 'not_an_int16' != ''
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.007s
+
+FAILED (failures=2, errors=1)
+Updated 2 paths from 64ee9d3cf6
+/tests/test.sh: line 168: uv: command not found

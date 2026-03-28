@@ -1,0 +1,154 @@
+++ cd /testbed
+++ set +x
+++ python -m pip install -e .
+Obtaining file:///testbed
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: asgiref>=3.6.0 in /opt/miniconda3/envs/testbed/lib/python3.11/site-packages (from Django==5.0.dev20250910133354) (3.8.1)
+Requirement already satisfied: sqlparse>=0.2.2 in /opt/miniconda3/envs/testbed/lib/python3.11/site-packages (from Django==5.0.dev20250910133354) (0.5.1)
+Building wheels for collected packages: Django
+  Building editable for Django (pyproject.toml): started
+  Building editable for Django (pyproject.toml): finished with status 'done'
+  Created wheel for Django: filename=django-5.0.dev20250910133354-0.editable-py3-none-any.whl size=27433 sha256=e32994f65b5d145e888a1585294a4ade3de367e4fde249107552b3288b128f01
+  Stored in directory: /tmp/pip-ephem-wheel-cache-bm56oje4/wheels/49/5f/4f/01b7d31ea6ddac9643da788242d33e5fd3467d95d17b032c6b
+Successfully built Django
+Installing collected packages: Django
+  Attempting uninstall: Django
+    Found existing installation: Django 5.0.dev20230308085325
+    Uninstalling Django-5.0.dev20230308085325:
+      Successfully uninstalled Django-5.0.dev20230308085325
+Successfully installed Django-5.0.dev20250910133354
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable.It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+++ git checkout 9b224579875e30203d079cc2fee83b116d98eb78 tests/auth_tests/test_basic.py
+Updated 1 path from 2c94f6eb06
+++ echo 'diff --git a/tests/auth_tests/test_basic.py b/tests/auth_tests/test_basic.py
+--- a/tests/auth_tests/test_basic.py
++++ b/tests/auth_tests/test_basic.py
+@@ -1,3 +1,4 @@
++from django.conf import settings
+ from django.contrib.auth import get_user, get_user_model
+ from django.contrib.auth.models import AnonymousUser, User
+ from django.core.exceptions import ImproperlyConfigured
+@@ -138,3 +139,26 @@ def test_get_user(self):
+         user = get_user(request)
+         self.assertIsInstance(user, User)
+         self.assertEqual(user.username, created_user.username)
++
++    def test_get_user_fallback_secret(self):
++        created_user = User.objects.create_user(
++            "testuser", "test@example.com", "testpw"
++        )
++        self.client.login(username="testuser", password="testpw")
++        request = HttpRequest()
++        request.session = self.client.session
++        prev_session_key = request.session.session_key
++        with override_settings(
++            SECRET_KEY="newsecret",
++            SECRET_KEY_FALLBACKS=[settings.SECRET_KEY],
++        ):
++            user = get_user(request)
++            self.assertIsInstance(user, User)
++            self.assertEqual(user.username, created_user.username)
++            self.assertNotEqual(request.session.session_key, prev_session_key)
++        # Remove the fallback secret.
++        # The session hash should be updated using the current secret.
++        with override_settings(SECRET_KEY="newsecret"):
++            user = get_user(request)
++            self.assertIsInstance(user, User)
++            self.assertEqual(user.username, created_user.username)
+'
+++ git apply --check /tmp/test_patch.diff
+++ git apply /tmp/test_patch.diff
++++ mktemp
+++ LOG_FILE=/tmp/tmp.P5APBoQh5n
+++ export LOG_FILE
+++ exec
+++ exec
++++ tee /tmp/tmp.P5APBoQh5n
+++ set +x
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Testing against Django installed in '/testbed/django'
+Importing application auth_tests
+Found 13 test(s).
+Skipping setup of unused database(s): other.
+Operations to perform:
+  Synchronize unmigrated apps: auth, auth_tests, contenttypes, messages, sessions, staticfiles
+  Apply all migrations: admin, sites
+Synchronizing apps without migrations:
+  Creating tables...
+    Creating table django_content_type
+    Creating table auth_permission
+    Creating table auth_group
+    Creating table auth_user
+    Creating table django_session
+    Creating table auth_tests_customuser
+    Creating table auth_tests_customuserwithoutisactivefield
+    Creating table auth_tests_extensionuser
+    Creating table auth_tests_custompermissionsuser
+    Creating table auth_tests_customusernonuniqueusername
+    Creating table auth_tests_isactivetestuser1
+    Creating table auth_tests_minimaluser
+    Creating table auth_tests_nopassworduser
+    Creating table auth_tests_concrete
+    Creating table auth_tests_uuiduser
+    Creating table auth_tests_customemailfield
+    Creating table auth_tests_email
+    Creating table auth_tests_customuserwithfk
+    Creating table auth_tests_integerusernameuser
+    Creating table auth_tests_userwithdisabledlastloginfield
+    Creating table auth_tests_organization
+    Creating table auth_tests_customuserwithm2m
+    Creating table auth_tests_customuserwithm2mthrough
+    Creating table auth_tests_membership
+    Creating table auth_tests_customuserwithuniqueconstraint
+    Running deferred SQL...
+Running migrations:
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+System check identified no issues (0 silenced).
+test_get_user_model (auth_tests.test_basic.BasicTestCase.test_get_user_model)
+The current user model can be retrieved ... ok
+test_superuser (auth_tests.test_basic.BasicTestCase.test_superuser)
+Check the creation and properties of a superuser ... ok
+test_superuser_no_email_or_password (auth_tests.test_basic.BasicTestCase.test_superuser_no_email_or_password) ... ok
+test_swappable_user (auth_tests.test_basic.BasicTestCase.test_swappable_user)
+The current user model can be swapped out for another ... ok
+test_swappable_user_bad_setting (auth_tests.test_basic.BasicTestCase.test_swappable_user_bad_setting)
+The alternate user setting must point to something in the format app.model ... ok
+test_swappable_user_nonexistent_model (auth_tests.test_basic.BasicTestCase.test_swappable_user_nonexistent_model)
+The current user model must point to an installed model ... ok
+test_unicode_username (auth_tests.test_basic.BasicTestCase.test_unicode_username) ... ok
+test_user (auth_tests.test_basic.BasicTestCase.test_user)
+Users can be created and can set their password ... ok
+test_user_no_email (auth_tests.test_basic.BasicTestCase.test_user_no_email)
+Users can be created without an email ... ok
+test_user_verbose_names_translatable (auth_tests.test_basic.BasicTestCase.test_user_verbose_names_translatable)
+Default User model verbose names are translatable (#19945) ... ok
+test_get_user (auth_tests.test_basic.TestGetUser.test_get_user) ... ok
+test_get_user_anonymous (auth_tests.test_basic.TestGetUser.test_get_user_anonymous) ... ok
+test_get_user_fallback_secret (auth_tests.test_basic.TestGetUser.test_get_user_fallback_secret) ... FAIL
+
+======================================================================
+FAIL: test_get_user_fallback_secret (auth_tests.test_basic.TestGetUser.test_get_user_fallback_secret)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/testbed/tests/auth_tests/test_basic.py", line 158, in test_get_user_fallback_secret
+    self.assertNotEqual(request.session.session_key, prev_session_key)
+AssertionError: 'otxqc9gif4k51ztz6ejqd6oxy98b29n3' == 'otxqc9gif4k51ztz6ejqd6oxy98b29n3'
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.024s
+
+FAILED (failures=1)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Updated 1 path from 2c94f6eb06
+/tests/test.sh: line 151: uv: command not found
