@@ -1,0 +1,72 @@
+{
+  "california_probate": [
+    {
+      "citation": "Cal. Prob. Code § 870",
+      "title": "RUFADAA Definitions",
+      "summary": "Defines key terms including 'digital asset', 'fiduciary', 'custodian', and 'user' for purposes of fiduciary access to digital assets.",
+      "applicability": "Provides definitional framework for all digital asset access requests."
+    },
+    {
+      "citation": "Cal. Prob. Code § 871",
+      "title": "Applicability",
+      "summary": "RUFADAA applies to fiduciaries acting under wills, trusts, and powers of attorney, as well as personal representatives of decedents' estates.",
+      "applicability": "Establishes that estate representatives have standing to request digital asset access."
+    },
+    {
+      "citation": "Cal. Prob. Code § 872",
+      "title": "User Direction for Disclosure",
+      "summary": "A user may use an online tool to direct the custodian to disclose or not disclose some or all of the user's digital assets.",
+      "applicability": "Relevant when determining whether the decedent provided specific direction regarding digital assets."
+    },
+    {
+      "citation": "Cal. Prob. Code § 873",
+      "title": "Terms of Service",
+      "summary": "If the user has not provided direction, the terms-of-service agreement controls, unless overridden by court order.",
+      "applicability": "Establishes the hierarchy: user direction > TOS > court order for determining disclosure obligations."
+    },
+    {
+      "citation": "Cal. Prob. Code § 874",
+      "title": "Personal Representative Access to Digital Assets",
+      "summary": "The personal representative of a decedent may request a custodian to disclose digital assets of the decedent, subject to specified conditions.",
+      "applicability": "Primary statutory authority for personal representative requests to digital asset custodians."
+    },
+    {
+      "citation": "Cal. Prob. Code § 876",
+      "title": "Disclosure of Content of Electronic Communications",
+      "summary": "Custodians shall disclose content of electronic communications to personal representatives if specified conditions are met, including court order.",
+      "applicability": "Requires court order for content of electronic communications; applies to email, messages, etc."
+    },
+    {
+      "citation": "Cal. Prob. Code § 877",
+      "title": "Disclosure of Other Digital Assets",
+      "summary": "Custodians shall disclose a catalogue of electronic communications and non-content digital assets to personal representatives upon proper request.",
+      "applicability": "Provides authority for non-content metadata, activity logs, and catalogue information without court order."
+    },
+    {
+      "citation": "Cal. Prob. Code § 880",
+      "title": "Compliance and Immunity",
+      "summary": "A custodian may charge a reasonable administrative fee and is not liable for good-faith compliance with a court order.",
+      "applicability": "Provides custodian safe harbor for compliance with court-ordered disclosure."
+    },
+    {
+      "citation": "Cal. Prob. Code § 884",
+      "title": "Applicability of Other Law",
+      "summary": "RUFADAA does not limit a fiduciary's authority under other law to access digital assets.",
+      "applicability": "Preserves other legal theories for digital asset access beyond RUFADAA."
+    }
+  ],
+  "federal": [
+    {
+      "citation": "18 U.S.C. § 2702(b)",
+      "title": "Stored Communications Act — Voluntary Disclosure Exceptions",
+      "summary": "Permits a service provider to voluntarily disclose contents and records to a governmental entity or lawful consent.",
+      "applicability": "Relevant to whether a court order satisfies SCA requirements for disclosure."
+    },
+    {
+      "citation": "18 U.S.C. § 2703",
+      "title": "Stored Communications Act — Required Disclosure",
+      "summary": "Establishes standards for government-compelled disclosure of stored communications and records.",
+      "applicability": "Sets federal floor for disclosure requirements that state orders must satisfy."
+    }
+  ]
+}
