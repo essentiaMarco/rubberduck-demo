@@ -8,6 +8,25 @@ so they can be merged seamlessly downstream.
 import re
 from typing import Any
 
+
+_MAX_CHUNK = 500_000  # Max chars per regex chunk to bound backtracking
+_CHUNK_OVERLAP = 200  # Overlap to catch matches spanning chunk boundaries
+
+
+def _safe_finditer(pattern: re.Pattern, text: str):
+    """Run regex finditer in bounded chunks to defend against ReDoS on large inputs."""
+    if len(text) <= _MAX_CHUNK:
+        yield from pattern.finditer(text)
+        return
+    seen_offsets: set[int] = set()
+    for start in range(0, len(text), _MAX_CHUNK - _CHUNK_OVERLAP):
+        chunk = text[start : start + _MAX_CHUNK]
+        for m in pattern.finditer(chunk):
+            absolute_offset = start + m.start()
+            if absolute_offset not in seen_offsets:
+                seen_offsets.add(absolute_offset)
+                yield m
+
 # ── Email (simplified RFC 5322) ───────────────────────────────
 
 _EMAIL_RE = re.compile(
@@ -27,7 +46,7 @@ _EMAIL_RE = re.compile(
 def extract_emails(text: str, file_id: str | None = None) -> list[dict[str, Any]]:
     """Extract email addresses from *text*."""
     results: list[dict[str, Any]] = []
-    for m in _EMAIL_RE.finditer(text):
+    for m in _safe_finditer(_EMAIL_RE, text):
         results.append(
             {
                 "text": m.group(),
@@ -65,7 +84,7 @@ _PHONE_RE = re.compile(
 def extract_phones(text: str, file_id: str | None = None) -> list[dict[str, Any]]:
     """Extract US-format phone numbers from *text*."""
     results: list[dict[str, Any]] = []
-    for m in _PHONE_RE.finditer(text):
+    for m in _safe_finditer(_PHONE_RE, text):
         raw = m.group().strip()
         # Quick sanity: must contain at least 10 digits
         digits = re.sub(r"\D", "", raw)
@@ -124,7 +143,7 @@ def extract_ips(text: str, file_id: str | None = None) -> list[dict[str, Any]]:
     """Extract IPv4 and IPv6 addresses from *text*."""
     results: list[dict[str, Any]] = []
 
-    for m in _IPV4_RE.finditer(text):
+    for m in _safe_finditer(_IPV4_RE, text):
         results.append(
             {
                 "text": m.group(),
@@ -136,7 +155,7 @@ def extract_ips(text: str, file_id: str | None = None) -> list[dict[str, Any]]:
             }
         )
 
-    for m in _IPV6_RE.finditer(text):
+    for m in _safe_finditer(_IPV6_RE, text):
         addr = m.group()
         # Skip if it looks like it was already captured as part of a URL
         if len(addr) < 3:
@@ -173,7 +192,7 @@ _URL_RE = re.compile(
 def extract_urls(text: str, file_id: str | None = None) -> list[dict[str, Any]]:
     """Extract HTTP/HTTPS URLs from *text*."""
     results: list[dict[str, Any]] = []
-    for m in _URL_RE.finditer(text):
+    for m in _safe_finditer(_URL_RE, text):
         url = m.group().rstrip(".,;:!?")  # strip trailing punctuation
         results.append(
             {

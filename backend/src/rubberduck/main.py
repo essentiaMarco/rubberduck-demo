@@ -3,8 +3,10 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from rubberduck.config import settings
 from rubberduck.db.models import Base
@@ -12,6 +14,26 @@ from rubberduck.db.sqlite import engine
 from rubberduck.jobs.manager import job_manager
 
 logger = logging.getLogger(__name__)
+
+
+class BearerTokenMiddleware(BaseHTTPMiddleware):
+    """Require a bearer token on all API endpoints when configured."""
+
+    EXEMPT_PATHS = {"/api/health", "/docs", "/openapi.json", "/redoc"}
+
+    async def dispatch(self, request: Request, call_next):
+        if not settings.api_token:
+            return await call_next(request)
+        if request.url.path in self.EXEMPT_PATHS:
+            return await call_next(request)
+        if not request.url.path.startswith("/api/"):
+            return await call_next(request)
+
+        auth = request.headers.get("Authorization", "")
+        if auth == f"Bearer {settings.api_token}":
+            return await call_next(request)
+
+        return JSONResponse(status_code=401, content={"detail": "Invalid or missing API token"})
 
 
 @asynccontextmanager
@@ -51,6 +73,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Bearer token authentication (must be added before CORS so it runs after CORS in the middleware stack)
+app.add_middleware(BearerTokenMiddleware)
 
 # CORS for local frontend
 app.add_middleware(

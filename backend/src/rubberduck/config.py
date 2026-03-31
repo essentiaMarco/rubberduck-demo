@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # ── Jobs ───────────────────────────────────────────────
     max_workers: int = 4
 
+    # ── Security ──────────────────────────────────────────
+    api_token: str = ""  # Bearer token for API auth; empty = no auth (dev mode)
+    allowed_ingest_paths: list[str] = []  # Allowed base dirs for directory ingestion; empty = data_dir only
+
     # ── Ingestion ──────────────────────────────────────────
     max_archive_depth: int = 5
     hash_chunk_size: int = 65536  # 64KB

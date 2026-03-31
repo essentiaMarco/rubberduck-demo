@@ -95,15 +95,30 @@ def ingest_upload(
 @router.post("/ingest/directory", response_model=IngestResponse)
 def ingest_directory(body: IngestDirectoryRequest, db: Session = Depends(get_db)):
     """Ingest all files from a local directory."""
+    from rubberduck.config import settings
+
+    # Validate the path is within allowed directories to prevent path traversal
+    resolved = Path(body.path).resolve()
+    allowed_bases = [Path(p).resolve() for p in settings.allowed_ingest_paths] if settings.allowed_ingest_paths else [settings.data_dir.resolve()]
+    if not any(resolved == base or resolved.is_relative_to(base) for base in allowed_bases):
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=403,
+            detail="Directory is outside allowed ingest paths",
+        )
+    if not resolved.is_dir():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Path is not a directory")
+
     job_id = job_manager.submit(
         db,
         "ingest",
         IngestService.ingest_directory,
-        params={"source_id": body.source_id, "path": body.path},
+        params={"source_id": body.source_id, "path": str(resolved)},
         source_id=body.source_id,
-        dir_path=body.path,
+        dir_path=str(resolved),
     )
-    return IngestResponse(job_id=job_id, message=f"Ingesting directory: {body.path}")
+    return IngestResponse(job_id=job_id, message=f"Ingesting directory: {resolved}")
 
 
 # ── Files ──────────────────────────────────────────────────

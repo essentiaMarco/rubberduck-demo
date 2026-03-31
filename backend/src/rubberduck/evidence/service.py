@@ -162,7 +162,7 @@ class IngestService:
             except Exception as e:
                 logger.error(f"Archive extraction failed for {file_path}: {e}")
                 file_record.parse_status = "failed"
-                file_record.parse_error = str(e)
+                file_record.parse_error = f"{type(e).__name__}: archive extraction failed"
                 db.commit()
             return file_record
 
@@ -239,7 +239,7 @@ class IngestService:
 
         except Exception as e:
             file_record.parse_status = "failed"
-            file_record.parse_error = f"{type(e).__name__}: {e}"
+            file_record.parse_error = f"{type(e).__name__}: parse failed"
             db.commit()
-            ManifestWriter.record(db, file_record.id, "parse_failed", {"error": str(e)})
+            ManifestWriter.record(db, file_record.id, "parse_failed", {"error": type(e).__name__})
             logger.error(f"Parse failed for {file_record.file_name}: {e}")
