@@ -24,6 +24,28 @@ class JobManager:
         self._futures: dict[str, Future] = {}
         self._subscribers: list[Queue] = []
 
+    def recover_stale_jobs(self, db: Session) -> int:
+        """Mark any 'running' or 'pending' jobs as 'failed' on startup.
+
+        These are leftovers from a previous process crash where the
+        _wrapper never got to run the except/finally blocks.
+        """
+        stale = (
+            db.query(Job)
+            .filter(Job.status.in_(["running", "pending"]))
+            .all()
+        )
+        count = 0
+        for job in stale:
+            job.status = "failed"
+            job.error = "Server restarted while job was in progress"
+            job.completed_at = datetime.now(timezone.utc)
+            count += 1
+        if count:
+            db.commit()
+            logger.info("Recovered %d stale jobs from previous run", count)
+        return count
+
     def submit(
         self,
         db: Session,

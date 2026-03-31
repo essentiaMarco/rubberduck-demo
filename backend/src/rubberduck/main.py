@@ -50,12 +50,13 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database initialized")
 
-    # Create FTS5 table
+    # Create FTS5 table and recover stale jobs
     from rubberduck.search.indexer import ensure_fts_table
     from rubberduck.db.sqlite import SessionLocal
     db = SessionLocal()
     try:
         ensure_fts_table(db)
+        job_manager.recover_stale_jobs(db)
     finally:
         db.close()
 
@@ -166,12 +167,27 @@ app.include_router(cases_router)
 @app.post("/api/analysis/run")
 def run_full_analysis(db: Session = Depends(get_db)):
     """Run all post-ingestion analysis: search index, entity extraction, timeline rebuild."""
-    from rubberduck.db.models import File as FileModel
+    from rubberduck.db.models import File as FileModel, Job
     from rubberduck.entities.service import extract_and_resolve
     from rubberduck.search.indexer import bulk_reindex
     from rubberduck.timeline.service import rebuild as timeline_rebuild
 
+    # Prevent duplicate: reject if a full_analysis job is already running
+    already_running = (
+        db.query(Job)
+        .filter(Job.job_type == "full_analysis", Job.status == "running")
+        .first()
+    )
+    if already_running:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=409,
+            detail=f"Analysis is already running (job {already_running.id})",
+        )
+
     def _full_analysis_job(thread_db: Session, job_id: str) -> dict:
+        import gc
+
         results = {"steps": []}
 
         # Step 1: Search reindex
@@ -180,24 +196,34 @@ def run_full_analysis(db: Session = Depends(get_db)):
         results["steps"].append({"step": "search_reindex", "result": reindex_stats})
         job_manager.update_progress(thread_db, job_id, 0.33, 1, 3)
 
-        # Step 2: Entity extraction on all completed files
-        completed_files = (
-            thread_db.query(FileModel)
+        # Step 2: Entity extraction — process in batches to manage memory
+        # Only fetch IDs first, not full ORM objects
+        file_ids = [
+            row[0]
+            for row in thread_db.query(FileModel.id)
             .filter(FileModel.parse_status == "completed", FileModel.parsed_path.isnot(None))
             .all()
-        )
-        entity_stats = {"total": len(completed_files), "succeeded": 0, "failed": 0}
-        for i, f in enumerate(completed_files):
+        ]
+        total = len(file_ids)
+        entity_stats = {"total": total, "succeeded": 0, "failed": 0}
+        BATCH_SIZE = 100
+        for i, fid in enumerate(file_ids):
             try:
-                extract_and_resolve(thread_db, f.id)
+                extract_and_resolve(thread_db, fid)
                 entity_stats["succeeded"] += 1
             except Exception:
                 entity_stats["failed"] += 1
-            if (i + 1) % 50 == 0:
-                progress = 0.33 + (0.34 * (i + 1) / len(completed_files))
+            if (i + 1) % 20 == 0:
+                progress = 0.33 + (0.34 * (i + 1) / total)
                 job_manager.update_progress(thread_db, job_id, progress, 1, 3)
+            # Flush and expire ORM cache every batch to free memory
+            if (i + 1) % BATCH_SIZE == 0:
+                thread_db.flush()
+                thread_db.expire_all()
+                gc.collect()
         results["steps"].append({"step": "entity_extraction", "result": entity_stats})
         job_manager.update_progress(thread_db, job_id, 0.67, 2, 3)
+        gc.collect()
 
         # Step 3: Timeline rebuild
         timeline_stats = timeline_rebuild()
