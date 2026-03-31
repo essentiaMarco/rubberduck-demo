@@ -84,7 +84,7 @@ class File(Base):
     file_ext = Column(String)
     mime_type = Column(String)
     file_size_bytes = Column(Integer)
-    sha256 = Column(String, index=True)
+    sha256 = Column(String)
     md5 = Column(String)
     is_archive = Column(Boolean, default=False)
     parent_file_id = Column(String, ForeignKey("files.id"))
