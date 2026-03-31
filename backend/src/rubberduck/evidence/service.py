@@ -237,6 +237,14 @@ class IngestService:
                 },
             )
 
+            # Auto-index for full-text search
+            try:
+                from rubberduck.search.indexer import index_file
+                if result.text_content.strip():
+                    index_file(db, file_record.id, result.text_content)
+            except Exception as idx_err:
+                logger.warning("FTS5 indexing failed for %s: %s", file_record.id, idx_err)
+
         except Exception as e:
             file_record.parse_status = "failed"
             file_record.parse_error = f"{type(e).__name__}: parse failed"

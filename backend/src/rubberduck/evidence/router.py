@@ -4,8 +4,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -64,6 +65,68 @@ def list_sources(case_id: str | None = None, db: Session = Depends(get_db)):
     ]
 
 
+class SourceIngestRequest(BaseModel):
+    """Create a source and immediately start directory ingestion."""
+    case_id: str
+    label: str
+    source_type: str = "upload"
+    received_from: str | None = None
+    notes: str | None = None
+    path: str  # directory to ingest
+
+
+@router.post("/sources/ingest", response_model=IngestResponse)
+def create_source_and_ingest(body: SourceIngestRequest, db: Session = Depends(get_db)):
+    """Create a new evidence source AND start directory ingestion in one call.
+
+    This is a convenience endpoint for setting up separate sources for different
+    data types (e.g., "court records" vs "personal Gmail data") and immediately
+    ingesting the associated directory.
+    """
+    from rubberduck.config import settings
+
+    # Validate the path
+    resolved = Path(body.path).resolve()
+    allowed_bases = (
+        [Path(p).resolve() for p in settings.allowed_ingest_paths]
+        if settings.allowed_ingest_paths
+        else [settings.data_dir.resolve()]
+    )
+    if not any(resolved == base or resolved.is_relative_to(base) for base in allowed_bases):
+        raise HTTPException(
+            status_code=403,
+            detail="Directory is outside allowed ingest paths",
+        )
+    if not resolved.is_dir():
+        raise HTTPException(status_code=400, detail="Path is not a directory")
+
+    # Create the source
+    source = EvidenceSource(
+        case_id=body.case_id,
+        label=body.label,
+        source_type=body.source_type,
+        received_from=body.received_from,
+        notes=body.notes,
+    )
+    db.add(source)
+    db.commit()
+    db.refresh(source)
+
+    # Start ingestion
+    job_id = job_manager.submit(
+        db,
+        "ingest",
+        IngestService.ingest_directory,
+        params={"source_id": source.id, "path": str(resolved)},
+        source_id=source.id,
+        dir_path=str(resolved),
+    )
+    return IngestResponse(
+        job_id=job_id,
+        message=f"Created source '{body.label}' ({source.id}) and started ingesting: {resolved}",
+    )
+
+
 # ── Ingestion ──────────────────────────────────────────────
 
 
@@ -101,13 +164,11 @@ def ingest_directory(body: IngestDirectoryRequest, db: Session = Depends(get_db)
     resolved = Path(body.path).resolve()
     allowed_bases = [Path(p).resolve() for p in settings.allowed_ingest_paths] if settings.allowed_ingest_paths else [settings.data_dir.resolve()]
     if not any(resolved == base or resolved.is_relative_to(base) for base in allowed_bases):
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=403,
             detail="Directory is outside allowed ingest paths",
         )
     if not resolved.is_dir():
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Path is not a directory")
 
     job_id = job_manager.submit(

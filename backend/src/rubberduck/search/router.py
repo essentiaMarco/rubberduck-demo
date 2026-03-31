@@ -1,9 +1,12 @@
 """API routes for full-text search."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from rubberduck.db.sqlite import get_db
+from rubberduck.jobs.manager import job_manager
 from rubberduck.schemas.search import (
     SearchRequest,
     SearchResponse,
@@ -11,6 +14,8 @@ from rubberduck.schemas.search import (
     SearchSuggestion,
 )
 from rubberduck.search.service import search, suggest
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
@@ -44,3 +49,15 @@ def autocomplete(
     """Return autocomplete suggestions for a search prefix."""
     suggestions = suggest(db, prefix=prefix, limit=limit)
     return [SearchSuggestion(**s) for s in suggestions]
+
+
+@router.post("/reindex")
+def trigger_reindex(db: Session = Depends(get_db)):
+    """Rebuild the full-text search index from all parsed files."""
+    from rubberduck.search.indexer import bulk_reindex
+
+    def _reindex_job(thread_db: Session, job_id: str) -> dict:
+        return bulk_reindex(thread_db)
+
+    job_id = job_manager.submit(db, "search_reindex", _reindex_job, params={})
+    return {"job_id": job_id, "message": "Search reindex started"}

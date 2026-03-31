@@ -81,7 +81,8 @@ def resolve_mentions(
         # Look up existing alias
         existing_alias = (
             db.query(EntityAlias)
-            .filter(EntityAlias.alias == normalized)
+            .join(Entity, EntityAlias.entity_id == Entity.id)
+            .filter(EntityAlias.alias == normalized, Entity.entity_type == entity_type)
             .first()
         )
 

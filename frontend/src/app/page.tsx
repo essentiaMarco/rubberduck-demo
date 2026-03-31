@@ -1,20 +1,94 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { evidence, jobs as jobsApi } from "@/lib/api";
+import { evidence, jobs as jobsApi, analysis } from "@/lib/api";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
+  const [analysisProgress, setAnalysisProgress] = useState<any>(null);
+
+  const refreshData = () => {
+    evidence.getStats().then(setStats).catch(console.error);
+    jobsApi.list({ page_size: "10" }).then((r) => setRecentJobs(r.items || [])).catch(console.error);
+  };
 
   useEffect(() => {
-    evidence.getStats().then(setStats).catch(console.error);
-    jobsApi.list({ page_size: "5" }).then((r) => setRecentJobs(r.items || [])).catch(console.error);
+    refreshData();
   }, []);
+
+  // Poll analysis job progress
+  useEffect(() => {
+    if (!analysisJobId) return;
+    const interval = setInterval(() => {
+      jobsApi.get(analysisJobId).then((job) => {
+        setAnalysisProgress(job);
+        if (job.status === "completed" || job.status === "failed") {
+          setAnalysisRunning(false);
+          setAnalysisJobId(null);
+          refreshData();
+        }
+      }).catch(console.error);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [analysisJobId]);
+
+  const handleRunAnalysis = async () => {
+    setAnalysisRunning(true);
+    try {
+      const result = await analysis.runFull();
+      setAnalysisJobId(result.job_id);
+      refreshData();
+    } catch (err) {
+      console.error(err);
+      setAnalysisRunning(false);
+    }
+  };
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Investigation Dashboard</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Investigation Dashboard</h1>
+        <button
+          onClick={handleRunAnalysis}
+          disabled={analysisRunning}
+          className={`px-4 py-2 rounded font-medium text-sm ${
+            analysisRunning
+              ? "bg-forensic-border text-slate-500 cursor-not-allowed"
+              : "bg-forensic-accent text-forensic-bg hover:bg-forensic-accent/90"
+          }`}
+        >
+          {analysisRunning ? "Analysis Running..." : "Run Full Analysis"}
+        </button>
+      </div>
+
+      {/* Analysis progress */}
+      {analysisProgress && analysisRunning && (
+        <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-blue-400">
+              Analysis Pipeline: {analysisProgress.status}
+            </span>
+            <span className="text-sm text-blue-400">
+              {Math.round((analysisProgress.progress || 0) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-blue-900/30 rounded-full h-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${(analysisProgress.progress || 0) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Step {analysisProgress.processed_items || 0} of {analysisProgress.total_items || 3}:
+            {(analysisProgress.progress || 0) < 0.33 ? " Building search index..." :
+             (analysisProgress.progress || 0) < 0.67 ? " Extracting entities (NER + regex)..." :
+             " Rebuilding timeline..."}
+          </p>
+        </div>
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

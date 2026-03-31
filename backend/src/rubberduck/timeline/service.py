@@ -246,13 +246,26 @@ def rebuild() -> dict:
         # Expected: parsed/<file_id>/events.json
         file_id = events_file.parent.name
 
-        # events.json may be a list of events or a dict with a "events" key
-        if isinstance(data, dict):
-            case_id = data.get("case_id", "unknown")
-            events_list = data.get("events", [])
-        elif isinstance(data, list):
-            case_id = "unknown"
+        # Look up case_id from database
+        from rubberduck.db.sqlite import SessionLocal
+        from rubberduck.db.models import File, EvidenceSource
+
+        db = SessionLocal()
+        try:
+            file_rec = db.query(File).get(file_id)
+            if file_rec:
+                source = db.query(EvidenceSource).get(file_rec.source_id)
+                case_id = source.case_id if source else "unknown"
+            else:
+                case_id = "unknown"
+        finally:
+            db.close()
+
+        # events.json from parsers is always a list; handle dict as fallback
+        if isinstance(data, list):
             events_list = data
+        elif isinstance(data, dict):
+            events_list = data.get("events", [])
         else:
             logger.warning("Unexpected events.json format in %s", events_file)
             continue

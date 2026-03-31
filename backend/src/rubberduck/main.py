@@ -161,6 +161,55 @@ def update_case(case_id: str, body: CaseUpdate, db: Session = Depends(get_db)):
 app.include_router(cases_router)
 
 
+# ── Full analysis pipeline ────────────────────────────────
+
+@app.post("/api/analysis/run")
+def run_full_analysis(db: Session = Depends(get_db)):
+    """Run all post-ingestion analysis: search index, entity extraction, timeline rebuild."""
+    from rubberduck.db.models import File as FileModel
+    from rubberduck.entities.service import extract_and_resolve
+    from rubberduck.search.indexer import bulk_reindex
+    from rubberduck.timeline.service import rebuild as timeline_rebuild
+
+    def _full_analysis_job(thread_db: Session, job_id: str) -> dict:
+        results = {"steps": []}
+
+        # Step 1: Search reindex
+        job_manager.update_progress(thread_db, job_id, 0.0, 0, 3)
+        reindex_stats = bulk_reindex(thread_db)
+        results["steps"].append({"step": "search_reindex", "result": reindex_stats})
+        job_manager.update_progress(thread_db, job_id, 0.33, 1, 3)
+
+        # Step 2: Entity extraction on all completed files
+        completed_files = (
+            thread_db.query(FileModel)
+            .filter(FileModel.parse_status == "completed", FileModel.parsed_path.isnot(None))
+            .all()
+        )
+        entity_stats = {"total": len(completed_files), "succeeded": 0, "failed": 0}
+        for i, f in enumerate(completed_files):
+            try:
+                extract_and_resolve(thread_db, f.id)
+                entity_stats["succeeded"] += 1
+            except Exception:
+                entity_stats["failed"] += 1
+            if (i + 1) % 50 == 0:
+                progress = 0.33 + (0.34 * (i + 1) / len(completed_files))
+                job_manager.update_progress(thread_db, job_id, progress, 1, 3)
+        results["steps"].append({"step": "entity_extraction", "result": entity_stats})
+        job_manager.update_progress(thread_db, job_id, 0.67, 2, 3)
+
+        # Step 3: Timeline rebuild
+        timeline_stats = timeline_rebuild()
+        results["steps"].append({"step": "timeline_rebuild", "result": timeline_stats})
+        job_manager.update_progress(thread_db, job_id, 1.0, 3, 3)
+
+        return results
+
+    job_id = job_manager.submit(db, "full_analysis", _full_analysis_job, params={})
+    return {"job_id": job_id, "message": "Full analysis pipeline started (search index + entities + timeline)"}
+
+
 # ── Health check ──────────────────────────────────────────
 
 @app.get("/api/health")

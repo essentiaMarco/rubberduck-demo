@@ -42,6 +42,7 @@ router = APIRouter(prefix="/api/entities", tags=["entities"])
 def list_entities(
     entity_type: str | None = None,
     search: str | None = None,
+    source_id: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -55,6 +56,17 @@ def list_entities(
     if search:
         pattern = f"%{search}%"
         query = query.filter(Entity.canonical_name.ilike(pattern))
+
+    if source_id:
+        # Filter to entities that have at least one mention linked to a file
+        # from the given evidence source.
+        source_subq = (
+            db.query(EntityMention.entity_id)
+            .join(File, EntityMention.file_id == File.id)
+            .filter(File.source_id == source_id)
+            .subquery()
+        )
+        query = query.filter(Entity.id.in_(source_subq))
 
     total = query.count()
 
