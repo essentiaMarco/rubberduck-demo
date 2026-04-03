@@ -23,10 +23,10 @@ def get_duckdb() -> duckdb.DuckDBPyConnection:
     # Register views only if matching parquet files exist.
     # DuckDB throws IOException when the glob matches zero files.
     try:
-        conn.execute(f"""
+        conn.execute("""
             CREATE OR REPLACE VIEW events AS
-            SELECT * FROM read_parquet('{events_path}', union_by_name=true, hive_partitioning=false)
-        """)
+            SELECT * FROM read_parquet($1, union_by_name=true, hive_partitioning=false)
+        """, [events_path])
     except duckdb.IOException:
         logger.debug("No event parquet files found at %s — creating empty events view", events_path)
         conn.execute("""
@@ -52,10 +52,10 @@ def get_duckdb() -> duckdb.DuckDBPyConnection:
         """)
 
     try:
-        conn.execute(f"""
+        conn.execute("""
             CREATE OR REPLACE VIEW communications AS
-            SELECT * FROM read_parquet('{comms_path}', union_by_name=true, hive_partitioning=false)
-        """)
+            SELECT * FROM read_parquet($1, union_by_name=true, hive_partitioning=false)
+        """, [comms_path])
     except duckdb.IOException:
         logger.debug("No communications parquet files found at %s — creating empty view", comms_path)
         conn.execute("CREATE OR REPLACE VIEW communications AS SELECT 1 WHERE false")
