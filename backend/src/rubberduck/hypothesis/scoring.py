@@ -103,9 +103,15 @@ def evaluate_hypothesis(db: Session, hypothesis_id: str) -> dict[str, Any]:
     if total_weight > 0:
         raw = (supporting_weight - disconfirming_weight) / total_weight
     else:
+        # No findings at all: raw = 0 → normalized would be 0.5, which is
+        # misleadingly high.  With zero evidence the confidence should be 0.
         raw = 0.0
 
-    normalized = (raw + 1.0) / 2.0
+    if total_weight > 0:
+        normalized = (raw + 1.0) / 2.0
+    else:
+        # No evidence → no confidence
+        normalized = 0.0
 
     gap_penalty = min(gap_count * 0.05, 0.50)
     confidence = max(normalized * (1.0 - gap_penalty), 0.0)

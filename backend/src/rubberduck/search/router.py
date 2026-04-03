@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
+@router.post("", response_model=SearchResponse)
 @router.post("/", response_model=SearchResponse)
 def full_text_search(body: SearchRequest, db: Session = Depends(get_db)):
     """Run a ranked full-text search across all indexed evidence."""
@@ -28,6 +29,8 @@ def full_text_search(body: SearchRequest, db: Session = Depends(get_db)):
         query=body.query,
         file_types=body.file_types,
         source_ids=body.source_ids,
+        date_start=body.date_start,
+        date_end=body.date_end,
         page=body.page,
         page_size=body.page_size,
     )

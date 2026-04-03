@@ -66,7 +66,7 @@ def process_events(
     rows: dict[str, list] = {field.name: [] for field in _EVENT_SCHEMA}
 
     for raw in raw_events:
-        ts_raw = raw.get("timestamp") or raw.get("timestamp_utc") or raw.get("date")
+        ts_raw = raw.get("timestamp") or raw.get("timestamp_raw") or raw.get("timestamp_utc") or raw.get("date")
         if ts_raw is None:
             logger.warning("Skipping event without timestamp in file %s", file_id)
             continue
@@ -188,6 +188,7 @@ def get_stats() -> dict:
                 stats["date_range_start"] = str(row[1]) if row[1] else None
                 stats["date_range_end"] = str(row[2]) if row[2] else None
         except duckdb.IOException:
+            logger.warning("DuckDB IOException reading event totals — Parquet files may be missing or corrupt")
             return stats
 
         # By type
@@ -197,7 +198,7 @@ def get_stats() -> dict:
             ).fetchall()
             stats["by_type"] = {r[0]: r[1] for r in type_rows}
         except duckdb.IOException:
-            pass
+            logger.warning("DuckDB IOException reading event types — skipping by_type stats")
 
         # By day
         try:
@@ -207,7 +208,7 @@ def get_stats() -> dict:
             ).fetchall()
             stats["by_day"] = [{"date": str(r[0]), "count": r[1]} for r in day_rows]
         except duckdb.IOException:
-            pass
+            logger.warning("DuckDB IOException reading daily events — skipping by_day stats")
 
         return stats
     finally:
@@ -224,13 +225,19 @@ def rebuild() -> dict:
     -------
     dict with ``files_processed`` and ``total_events``.
     """
+    import shutil
+    import tempfile
+
     parsed_dir = settings.parsed_dir
     events_dir = settings.parquet_dir / "events"
 
-    # Clear existing event parquet files
-    if events_dir.exists():
-        for pf in events_dir.glob("*.parquet"):
-            pf.unlink()
+    # Write to a temporary directory first, then atomically swap.
+    # This prevents a window where old Parquet files are deleted but new
+    # ones haven't been written yet — which would cause get_stats() to
+    # return empty results if called mid-rebuild.
+    tmp_events_dir = Path(tempfile.mkdtemp(
+        prefix="events_rebuild_", dir=str(settings.parquet_dir)
+    ))
 
     files_processed = 0
     total_events = 0
@@ -270,12 +277,85 @@ def rebuild() -> dict:
             logger.warning("Unexpected events.json format in %s", events_file)
             continue
 
-        result = process_events(file_id, case_id, events_list)
+        result = _process_events_to_dir(file_id, case_id, events_list, tmp_events_dir)
         files_processed += 1
         total_events += result.get("events_written", 0)
 
+    # Atomic swap: rename old dir out, rename new dir in
+    backup_dir = events_dir.with_name("events_old")
+    try:
+        if events_dir.exists():
+            events_dir.rename(backup_dir)
+        tmp_events_dir.rename(events_dir)
+        # Clean up old data
+        if backup_dir.exists():
+            shutil.rmtree(backup_dir)
+    except OSError:
+        # Rollback: restore backup if swap failed
+        logger.exception("Failed to swap events directory; rolling back")
+        if not events_dir.exists() and backup_dir.exists():
+            backup_dir.rename(events_dir)
+        if tmp_events_dir.exists():
+            shutil.rmtree(tmp_events_dir)
+        raise
+
     logger.info("Timeline rebuild complete: %d files, %d events", files_processed, total_events)
     return {"files_processed": files_processed, "total_events": total_events}
+
+
+def _process_events_to_dir(
+    file_id: str,
+    case_id: str,
+    raw_events: list[dict],
+    target_dir: Path,
+) -> dict:
+    """Like process_events but writes Parquet to an arbitrary directory."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    rows: dict[str, list] = {field.name: [] for field in _EVENT_SCHEMA}
+
+    for raw in raw_events:
+        ts_raw = raw.get("timestamp") or raw.get("timestamp_raw") or raw.get("timestamp_utc") or raw.get("date")
+        if ts_raw is None:
+            continue
+
+        norm = normalize(ts_raw)
+        if norm["utc"] is None:
+            continue
+
+        event_id = raw.get("event_id") or str(uuid.uuid4())
+
+        rows["event_id"].append(event_id)
+        rows["case_id"].append(case_id)
+        rows["file_id"].append(file_id)
+        rows["file_name"].append(raw.get("file_name"))
+        rows["event_type"].append(raw.get("event_type", "unknown"))
+        rows["event_subtype"].append(raw.get("event_subtype"))
+        rows["timestamp_utc"].append(norm["utc"])
+        rows["timestamp_orig"].append(norm["original"])
+        rows["timezone_orig"].append(norm["timezone"])
+        rows["actor_entity_id"].append(raw.get("actor_entity_id"))
+        rows["actor_name"].append(raw.get("actor_name"))
+        rows["target_entity_id"].append(raw.get("target_entity_id"))
+        rows["target_name"].append(raw.get("target_name"))
+        rows["summary"].append(raw.get("summary", ""))
+        rows["raw_data"].append(
+            json.dumps(raw.get("raw_data")) if raw.get("raw_data") else None
+        )
+        rows["confidence"].append(float(raw.get("confidence", 1.0)))
+
+    if not rows["event_id"]:
+        return {"file_id": file_id, "events_written": 0, "parquet_path": None}
+
+    batch = pa.RecordBatch.from_pydict(rows, schema=_EVENT_SCHEMA)
+    parquet_path = target_dir / f"{file_id}.parquet"
+    pq.write_table(pa.Table.from_batches([batch]), str(parquet_path))
+
+    return {
+        "file_id": file_id,
+        "events_written": len(rows["event_id"]),
+        "parquet_path": str(parquet_path),
+    }
 
 
 # ── Internal helpers ──────────────────────────────────────────
@@ -318,4 +398,5 @@ def _count_events(
         result = conn.execute(sql, params).fetchone()
         return result[0] if result else 0
     except duckdb.IOException:
+        logger.warning("DuckDB IOException counting events — returning 0")
         return 0

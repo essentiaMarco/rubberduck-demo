@@ -1,5 +1,6 @@
 """Entity service — orchestrates extraction, resolution, and management."""
 
+import gc
 import logging
 from pathlib import Path
 from typing import Any
@@ -45,6 +46,12 @@ def extract_and_resolve(db: Session, file_id: str) -> dict[str, Any]:
     if not text.strip():
         return {"file_id": file_id, "spacy_mentions": 0, "regex_mentions": 0, "resolved": 0}
 
+    # Cap text at 2 MB to prevent spaCy from consuming excessive memory
+    MAX_TEXT_LEN = 2 * 1024 * 1024
+    if len(text) > MAX_TEXT_LEN:
+        logger.warning("Truncating file %s content from %d to %d chars for NER", file_id, len(text), MAX_TEXT_LEN)
+        text = text[:MAX_TEXT_LEN]
+
     # Run extractors
     spacy_mentions = spacy_extract(text, file_id=file_id)
     regex_mentions = regex_extract_all(text, file_id=file_id)
@@ -54,12 +61,18 @@ def extract_and_resolve(db: Session, file_id: str) -> dict[str, Any]:
     # Resolve against existing entities
     resolved = resolve_mentions(db, all_mentions, file_id, source_text=text)
 
-    return {
+    result = {
         "file_id": file_id,
         "spacy_mentions": len(spacy_mentions),
         "regex_mentions": len(regex_mentions),
         "resolved": len(resolved),
     }
+
+    # Explicitly free large objects to reduce memory pressure
+    del text, spacy_mentions, regex_mentions, all_mentions, resolved
+    gc.collect()
+
+    return result
 
 
 def merge_entities(db: Session, source_id: str, target_id: str) -> dict[str, Any]:
@@ -145,12 +158,17 @@ def get_entity_relationships(db: Session, entity_id: str) -> list[dict[str, Any]
     if not entity:
         raise ValueError(f"Entity not found: {entity_id}")
 
-    # Aliases for source and target entity names
-    source_entity = db.query(Entity).filter(Entity.id == Relationship.source_entity_id).subquery()
-    target_entity = db.query(Entity).filter(Entity.id == Relationship.target_entity_id).subquery()
+    # Use aliased joins to fetch source and target entity names in a
+    # single query instead of issuing 2 * N individual queries (N+1 problem).
+    from sqlalchemy.orm import aliased
 
-    relationships = (
-        db.query(Relationship)
+    SrcEntity = aliased(Entity, name="src_entity")
+    TgtEntity = aliased(Entity, name="tgt_entity")
+
+    rows = (
+        db.query(Relationship, SrcEntity, TgtEntity)
+        .outerjoin(SrcEntity, Relationship.source_entity_id == SrcEntity.id)
+        .outerjoin(TgtEntity, Relationship.target_entity_id == TgtEntity.id)
         .filter(
             or_(
                 Relationship.source_entity_id == entity_id,
@@ -161,9 +179,7 @@ def get_entity_relationships(db: Session, entity_id: str) -> list[dict[str, Any]
     )
 
     results: list[dict[str, Any]] = []
-    for rel in relationships:
-        src = db.query(Entity).get(rel.source_entity_id)
-        tgt = db.query(Entity).get(rel.target_entity_id)
+    for rel, src, tgt in rows:
         results.append(
             {
                 "id": rel.id,

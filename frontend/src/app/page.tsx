@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
   const [analysisProgress, setAnalysisProgress] = useState<any>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const refreshData = () => {
     evidence.getStats().then(setStats).catch(console.error);
@@ -37,12 +38,14 @@ export default function Dashboard() {
 
   const handleRunAnalysis = async () => {
     setAnalysisRunning(true);
+    setAnalysisError(null);
     try {
       const result = await analysis.runFull();
       setAnalysisJobId(result.job_id);
       refreshData();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setAnalysisError(err?.message || "Failed to start analysis");
       setAnalysisRunning(false);
     }
   };
@@ -69,7 +72,7 @@ export default function Dashboard() {
         <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-blue-400">
-              Analysis Pipeline: {analysisProgress.status}
+              {analysisProgress.current_step || "Starting analysis..."}
             </span>
             <span className="text-sm text-blue-400">
               {Math.round((analysisProgress.progress || 0) * 100)}%
@@ -81,12 +84,24 @@ export default function Dashboard() {
               style={{ width: `${(analysisProgress.progress || 0) * 100}%` }}
             />
           </div>
-          <p className="text-xs text-slate-500 mt-2">
-            Step {analysisProgress.processed_items || 0} of {analysisProgress.total_items || 3}:
-            {(analysisProgress.progress || 0) < 0.33 ? " Building search index..." :
-             (analysisProgress.progress || 0) < 0.67 ? " Extracting entities (NER + regex)..." :
-             " Rebuilding timeline..."}
-          </p>
+          {analysisProgress.total_items > 0 && (
+            <p className="text-xs text-slate-500 mt-2">
+              File {analysisProgress.processed_items || 0} of {analysisProgress.total_items}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Analysis error */}
+      {analysisError && (
+        <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <span className="text-sm text-red-400">{analysisError}</span>
+          <button
+            onClick={() => setAnalysisError(null)}
+            className="text-red-400 hover:text-red-300 text-sm ml-4"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -128,6 +143,7 @@ export default function Dashboard() {
                 <th className="pb-2">Type</th>
                 <th className="pb-2">Status</th>
                 <th className="pb-2">Progress</th>
+                <th className="pb-2">Step</th>
                 <th className="pb-2">Created</th>
               </tr>
             </thead>
@@ -139,6 +155,7 @@ export default function Dashboard() {
                     <StatusBadge status={job.status} />
                   </td>
                   <td className="py-2">{Math.round(job.progress * 100)}%</td>
+                  <td className="py-2 text-xs text-slate-400">{job.current_step || "—"}</td>
                   <td className="py-2 text-slate-500">{job.created_at?.slice(0, 19)}</td>
                 </tr>
               ))}

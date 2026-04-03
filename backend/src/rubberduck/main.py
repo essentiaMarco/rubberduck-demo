@@ -2,6 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,6 +74,7 @@ app = FastAPI(
     description="Local-first digital forensic investigative platform",
     version="0.1.0",
     lifespan=lifespan,
+    redirect_slashes=False,  # Prevent 307 redirects that break reverse proxy setups
 )
 
 # Bearer token authentication (must be added before CORS so it runs after CORS in the middleware stack)
@@ -99,6 +101,8 @@ from rubberduck.legal.router import router as legal_router
 from rubberduck.osint.router import router as osint_router
 from rubberduck.reports.router import router as reports_router
 from rubberduck.jobs.router import router as jobs_router
+from rubberduck.communications.router import router as communications_router
+from rubberduck.phone_analysis.router import router as phone_analysis_router
 
 app.include_router(evidence_router)
 app.include_router(search_router)
@@ -110,6 +114,8 @@ app.include_router(legal_router)
 app.include_router(osint_router)
 app.include_router(reports_router)
 app.include_router(jobs_router)
+app.include_router(communications_router)
+app.include_router(phone_analysis_router)
 
 
 # ── Cases router (inline for simplicity) ──────────────────
@@ -164,13 +170,18 @@ app.include_router(cases_router)
 
 # ── Full analysis pipeline ────────────────────────────────
 
+ANALYSIS_STEPS = [
+    {"key": "search_reindex", "label": "Building search index", "weight": 0.05},
+    {"key": "entity_extraction", "label": "Extracting entities (NER)", "weight": 0.70},
+    {"key": "relationship_extraction", "label": "Building relationship graph", "weight": 0.15},
+    {"key": "timeline_rebuild", "label": "Rebuilding timeline", "weight": 0.10},
+]
+
+
 @app.post("/api/analysis/run")
 def run_full_analysis(db: Session = Depends(get_db)):
     """Run all post-ingestion analysis: search index, entity extraction, timeline rebuild."""
     from rubberduck.db.models import File as FileModel, Job
-    from rubberduck.entities.service import extract_and_resolve
-    from rubberduck.search.indexer import bulk_reindex
-    from rubberduck.timeline.service import rebuild as timeline_rebuild
 
     # Prevent duplicate: reject if a full_analysis job is already running
     already_running = (
@@ -179,61 +190,162 @@ def run_full_analysis(db: Session = Depends(get_db)):
         .first()
     )
     if already_running:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=409,
-            detail=f"Analysis is already running (job {already_running.id})",
-        )
+        # Check if the thread is actually alive
+        future = job_manager._futures.get(already_running.id)
+        if future and not future.done():
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=409,
+                detail=f"Analysis is already running (job {already_running.id})",
+            )
+        else:
+            # Thread is dead but DB still says running — mark as failed
+            already_running.status = "failed"
+            already_running.error = "Background thread died unexpectedly"
+            already_running.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            logger.warning("Recovered zombie job %s", already_running.id)
 
     def _full_analysis_job(thread_db: Session, job_id: str) -> dict:
         import gc
+        import os
+        import signal
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
-        results = {"steps": []}
+        import psutil
 
-        # Step 1: Search reindex
-        job_manager.update_progress(thread_db, job_id, 0.0, 0, 3)
-        reindex_stats = bulk_reindex(thread_db)
-        results["steps"].append({"step": "search_reindex", "result": reindex_stats})
-        job_manager.update_progress(thread_db, job_id, 0.33, 1, 3)
+        results = {"steps": [], "completed_steps": []}
 
-        # Step 2: Entity extraction — process in batches to manage memory
-        # Only fetch IDs first, not full ORM objects
-        file_ids = [
-            row[0]
-            for row in thread_db.query(FileModel.id)
-            .filter(FileModel.parse_status == "completed", FileModel.parsed_path.isnot(None))
-            .all()
-        ]
-        total = len(file_ids)
-        entity_stats = {"total": total, "succeeded": 0, "failed": 0}
-        BATCH_SIZE = 100
-        for i, fid in enumerate(file_ids):
-            try:
-                extract_and_resolve(thread_db, fid)
-                entity_stats["succeeded"] += 1
-            except Exception:
-                entity_stats["failed"] += 1
-            if (i + 1) % 20 == 0:
-                progress = 0.33 + (0.34 * (i + 1) / total)
-                job_manager.update_progress(thread_db, job_id, progress, 1, 3)
-            # Flush and expire ORM cache every batch to free memory
-            if (i + 1) % BATCH_SIZE == 0:
-                thread_db.flush()
-                thread_db.expire_all()
-                gc.collect()
-        results["steps"].append({"step": "entity_extraction", "result": entity_stats})
-        job_manager.update_progress(thread_db, job_id, 0.67, 2, 3)
+        def _update(step_key: str, step_progress: float, processed: int = 0, total: int = 0):
+            """Calculate overall progress from step weights and update."""
+            step_info = next((s for s in ANALYSIS_STEPS if s["key"] == step_key), None)
+            if not step_info:
+                return
+            step_idx = ANALYSIS_STEPS.index(step_info)
+            # Overall = sum of completed step weights + current step partial
+            base = sum(s["weight"] for s in ANALYSIS_STEPS[:step_idx])
+            overall = base + step_info["weight"] * step_progress
+            job_manager.update_progress(
+                thread_db, job_id, overall, processed, total,
+                current_step=step_info["label"],
+            )
+
+        # ── Step 1: Search reindex ────────────────────────────
+        _update("search_reindex", 0.0)
+        try:
+            from rubberduck.search.indexer import bulk_reindex
+            reindex_stats = bulk_reindex(thread_db)
+            results["steps"].append({"step": "search_reindex", "status": "ok", "result": reindex_stats})
+            results["completed_steps"].append("search_reindex")
+        except Exception:
+            logger.exception("Search reindex failed")
+            results["steps"].append({"step": "search_reindex", "status": "failed"})
+        _update("search_reindex", 1.0)
+
+        # ── Step 2: Entity extraction ─────────────────────────
+        _update("entity_extraction", 0.0)
+        try:
+            from rubberduck.db.models import EntityMention
+            from rubberduck.entities.service import extract_and_resolve
+            from rubberduck.entities.spacy_ner import reload_model as reload_spacy_model
+
+            already_extracted = thread_db.query(EntityMention.file_id).distinct().subquery()
+            MAX_FILE_SIZE = 50 * 1024 * 1024
+            file_ids = [
+                row[0]
+                for row in thread_db.query(FileModel.id)
+                .filter(
+                    FileModel.parse_status == "completed",
+                    FileModel.parsed_path.isnot(None),
+                    ~FileModel.id.in_(already_extracted),
+                    FileModel.file_size_bytes <= MAX_FILE_SIZE,
+                )
+                .all()
+            ]
+            total = len(file_ids)
+            entity_stats = {"total": total, "succeeded": 0, "failed": 0, "timed_out": 0}
+
+            MICRO_BATCH = 5
+            MODEL_RELOAD = 25
+            MEM_LIMIT_MB = 1024
+            FILE_TIMEOUT = 60  # seconds per file
+
+            process = psutil.Process(os.getpid())
+
+            for i, fid in enumerate(file_ids):
+                # Memory gate
+                rss_mb = process.memory_info().rss / (1024 * 1024)
+                if rss_mb > MEM_LIMIT_MB:
+                    logger.warning("Memory %.0f MB > %d MB at file %d/%d — GC", rss_mb, MEM_LIMIT_MB, i + 1, total)
+                    thread_db.flush()
+                    thread_db.expire_all()
+                    reload_spacy_model()
+                    gc.collect()
+
+                # Extract with per-file timeout
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as mini:
+                        future = mini.submit(extract_and_resolve, thread_db, fid)
+                        future.result(timeout=FILE_TIMEOUT)
+                    entity_stats["succeeded"] += 1
+                except FuturesTimeout:
+                    logger.warning("Entity extraction timed out for file %s (%d/%d)", fid, i + 1, total)
+                    entity_stats["timed_out"] += 1
+                except Exception:
+                    logger.exception("Entity extraction failed for file %s (%d/%d)", fid, i + 1, total)
+                    entity_stats["failed"] += 1
+
+                # Micro-batch flush
+                if (i + 1) % MICRO_BATCH == 0:
+                    thread_db.flush()
+                    thread_db.expire_all()
+                    gc.collect()
+
+                # Reload spaCy periodically
+                if (i + 1) % MODEL_RELOAD == 0:
+                    reload_spacy_model()
+                    gc.collect()
+
+                # Progress every 5 files
+                if (i + 1) % 5 == 0 or i == total - 1:
+                    _update("entity_extraction", (i + 1) / max(total, 1), i + 1, total)
+
+            results["steps"].append({"step": "entity_extraction", "status": "ok", "result": entity_stats})
+            results["completed_steps"].append("entity_extraction")
+        except Exception:
+            logger.exception("Entity extraction step failed entirely")
+            results["steps"].append({"step": "entity_extraction", "status": "failed"})
+        _update("entity_extraction", 1.0)
         gc.collect()
 
-        # Step 3: Timeline rebuild
-        timeline_stats = timeline_rebuild()
-        results["steps"].append({"step": "timeline_rebuild", "result": timeline_stats})
-        job_manager.update_progress(thread_db, job_id, 1.0, 3, 3)
+        # ── Step 3: Relationship extraction ───────────────────
+        _update("relationship_extraction", 0.0)
+        try:
+            from rubberduck.graph.relationships import extract_cooccurrence_relationships
+            rel_stats = extract_cooccurrence_relationships(thread_db)
+            results["steps"].append({"step": "relationship_extraction", "status": "ok", "result": rel_stats})
+            results["completed_steps"].append("relationship_extraction")
+        except Exception:
+            logger.exception("Relationship extraction failed")
+            results["steps"].append({"step": "relationship_extraction", "status": "failed"})
+        _update("relationship_extraction", 1.0)
+
+        # ── Step 4: Timeline rebuild ──────────────────────────
+        _update("timeline_rebuild", 0.0)
+        try:
+            from rubberduck.timeline.service import rebuild as timeline_rebuild
+            timeline_stats = timeline_rebuild()
+            results["steps"].append({"step": "timeline_rebuild", "status": "ok", "result": timeline_stats})
+            results["completed_steps"].append("timeline_rebuild")
+        except Exception:
+            logger.exception("Timeline rebuild failed")
+            results["steps"].append({"step": "timeline_rebuild", "status": "failed"})
+        _update("timeline_rebuild", 1.0)
 
         return results
 
     job_id = job_manager.submit(db, "full_analysis", _full_analysis_job, params={})
-    return {"job_id": job_id, "message": "Full analysis pipeline started (search index + entities + timeline)"}
+    return {"job_id": job_id, "message": "Full analysis pipeline started"}
 
 
 # ── Health check ──────────────────────────────────────────

@@ -109,6 +109,52 @@ class File(Base):
     )
 
 
+class EmailMessage(Base):
+    """Individual email extracted from EML/MBOX files.
+
+    Stores per-email metadata so investigators can filter by sender,
+    subject, date, spam classification, and communication type instead
+    of wading through a monolithic MBOX text dump.
+    """
+    __tablename__ = "email_messages"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    file_id = Column(String, ForeignKey("files.id"), nullable=False)
+    message_index = Column(Integer, default=0)  # position within MBOX
+    message_id = Column(String)  # RFC Message-ID header
+    in_reply_to = Column(String)  # threading
+    email_from = Column(String)
+    email_to = Column(String)
+    email_cc = Column(String)
+    email_subject = Column(String)
+    email_date = Column(DateTime)
+    email_date_raw = Column(String)  # original Date header string
+    body_preview = Column(Text)  # first ~500 chars of body for quick preview
+    body_length = Column(Integer, default=0)
+    has_attachments = Column(Boolean, default=False)
+    attachment_count = Column(Integer, default=0)
+    # Spam detection
+    is_spam = Column(Boolean, default=False)
+    spam_score = Column(Float, default=0.0)  # 0-1, higher = more likely spam
+    spam_reasons = Column(Text)  # JSON list of reasons
+    # Classification
+    classification = Column(String, default="inbox")  # inbox, sent, spam, newsletter, notification, personal, unknown
+    # Communication type for triangulation
+    comm_type = Column(String, default="email")  # email, chat, sms, call, whatsapp, etc.
+    created_at = Column(DateTime, default=_utcnow)
+
+    file = relationship("File", backref="email_messages")
+
+    __table_args__ = (
+        Index("ix_email_file_id", "file_id"),
+        Index("ix_email_from", "email_from"),
+        Index("ix_email_date", "email_date"),
+        Index("ix_email_is_spam", "is_spam"),
+        Index("ix_email_classification", "classification"),
+        Index("ix_email_comm_type", "comm_type"),
+    )
+
+
 class ChainOfCustody(Base):
     __tablename__ = "chain_of_custody"
 
@@ -328,6 +374,61 @@ class ResearchCapture(Base):
     provenance_notes = Column(Text)
 
 
+# ── Phone CDR Records ─────────────────────────────────────
+
+
+class PhoneRecord(Base):
+    """Individual call/SMS record extracted from phone bills (CDR data)."""
+
+    __tablename__ = "phone_records"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    file_id = Column(String, ForeignKey("files.id"))
+    record_index = Column(Integer, default=0)
+
+    # Subscriber info (from bill header)
+    subscriber_number = Column(String)  # e.g. "7356117700"
+    subscriber_name = Column(String)  # e.g. "GOUTHAM VIJAYAKUMAR"
+
+    # Call metadata
+    caller_number = Column(String)  # normalized phone number (source)
+    called_number = Column(String)  # normalized phone number (destination)
+    call_datetime = Column(DateTime)
+    call_datetime_raw = Column(String)  # original string from PDF
+    duration_seconds = Column(Integer, default=0)
+    duration_raw = Column(String)  # original "Min:Sec" string
+    charges = Column(Float, default=0.0)
+
+    # Classification
+    call_type = Column(String)  # outgoing_local, outgoing_std, incoming, sms_outgoing, sms_incoming
+
+    # Bill context
+    bill_period_start = Column(DateTime)
+    bill_period_end = Column(DateTime)
+    bill_number = Column(String)
+    bill_plan = Column(String)  # tariff plan name
+
+    # Anomaly detection
+    is_anomaly = Column(Boolean, default=False)
+    anomaly_score = Column(Float, default=0.0)
+    anomaly_reasons = Column(Text)  # JSON list of reasons
+
+    created_at = Column(DateTime, default=_utcnow)
+
+    # Relationships
+    file = relationship("File", backref="phone_records")
+
+    __table_args__ = (
+        Index("ix_phone_file_id", "file_id"),
+        Index("ix_phone_caller", "caller_number"),
+        Index("ix_phone_called", "called_number"),
+        Index("ix_phone_datetime", "call_datetime"),
+        Index("ix_phone_call_type", "call_type"),
+        Index("ix_phone_is_anomaly", "is_anomaly"),
+        Index("ix_phone_subscriber", "subscriber_number"),
+    )
+
+
 # ── Background Jobs ────────────────────────────────────────
 
 
@@ -340,6 +441,7 @@ class Job(Base):
     progress = Column(Float, default=0.0)  # 0.0 to 1.0
     total_items = Column(Integer)
     processed_items = Column(Integer, default=0)
+    current_step = Column(String)  # Human-readable label for current pipeline step
     params = Column(Text)  # JSON
     result = Column(Text)  # JSON
     error = Column(Text)

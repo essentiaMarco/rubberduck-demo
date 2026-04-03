@@ -245,6 +245,21 @@ class IngestService:
             except Exception as idx_err:
                 logger.warning("FTS5 indexing failed for %s: %s", file_record.id, idx_err)
 
+            # Auto-extract individual email records from EML/MBOX files
+            if file_record.file_ext in (".eml", ".mbox"):
+                try:
+                    from rubberduck.evidence.email_extractor import extract_emails_from_file
+                    email_stats = extract_emails_from_file(db, file_record)
+                    logger.info(
+                        "Extracted %d emails from %s (spam: %d, personal: %d)",
+                        email_stats.get("total", 0),
+                        file_record.file_name,
+                        email_stats.get("spam", 0) + email_stats.get("newsletter", 0),
+                        email_stats.get("personal", 0),
+                    )
+                except Exception as email_err:
+                    logger.warning("Email extraction failed for %s: %s", file_record.id, email_err)
+
         except Exception as e:
             file_record.parse_status = "failed"
             file_record.parse_error = f"{type(e).__name__}: parse failed"

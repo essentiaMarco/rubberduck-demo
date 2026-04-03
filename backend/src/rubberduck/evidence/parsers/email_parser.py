@@ -87,11 +87,24 @@ def _parse_message(msg) -> ParseResult:
                 if payload:
                     from bs4 import BeautifulSoup
                     soup = BeautifulSoup(payload.decode("utf-8", errors="replace"), "lxml")
+                    for tag in soup(["script", "style", "noscript"]):
+                        tag.decompose()
                     body = soup.get_text(separator="\n", strip=True)
     else:
         payload = msg.get_payload(decode=True)
         if payload:
-            body = payload.decode("utf-8", errors="replace")
+            raw_body = payload.decode("utf-8", errors="replace")
+            # Single-part HTML emails need HTML stripping too
+            content_type = msg.get_content_type()
+            if content_type == "text/html":
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(raw_body, "lxml")
+                # Remove script, style, and noscript tags entirely
+                for tag in soup(["script", "style", "noscript"]):
+                    tag.decompose()
+                body = soup.get_text(separator="\n", strip=True)
+            else:
+                body = raw_body
 
     # Build text representation
     text = f"From: {headers['from']}\nTo: {headers['to']}\n"

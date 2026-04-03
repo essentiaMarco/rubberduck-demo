@@ -3,9 +3,9 @@
 import json
 import logging
 import traceback
-from asyncio import Queue
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from queue import Full, Queue
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -106,13 +106,23 @@ class JobManager:
         self._futures[job_id] = future
         return job_id
 
-    def update_progress(self, db: Session, job_id: str, progress: float, processed: int = 0, total: int = 0):
+    def update_progress(
+        self,
+        db: Session,
+        job_id: str,
+        progress: float,
+        processed: int = 0,
+        total: int = 0,
+        current_step: str | None = None,
+    ):
         """Update job progress from within a running job."""
         job = db.query(Job).get(job_id)
         if job:
             job.progress = min(progress, 1.0)
             job.processed_items = processed
             job.total_items = total
+            if current_step is not None:
+                job.current_step = current_step
             db.commit()
             self._broadcast(job_id, "running", progress)
 
@@ -131,8 +141,14 @@ class JobManager:
         return False
 
     def subscribe(self) -> Queue:
-        """Subscribe to job events via SSE."""
-        q: Queue = Queue()
+        """Subscribe to job events via SSE.
+
+        Returns a bounded, thread-safe :class:`queue.Queue`.  Previous
+        implementation used ``asyncio.Queue`` which is **not** thread-safe
+        and would corrupt internal state when ``_broadcast`` is called from
+        ``ThreadPoolExecutor`` worker threads.
+        """
+        q: Queue = Queue(maxsize=256)
         self._subscribers.append(q)
         return q
 
@@ -144,11 +160,24 @@ class JobManager:
     def _broadcast(self, job_id: str, status: str, progress: float):
         """Send job status update to all SSE subscribers."""
         event = {"job_id": job_id, "status": status, "progress": progress}
+        dead: list[Queue] = []
         for q in self._subscribers:
             try:
                 q.put_nowait(event)
+            except Full:
+                logger.warning(
+                    "SSE subscriber queue full, dropping event for job %s",
+                    job_id,
+                )
             except Exception:
-                pass
+                logger.exception(
+                    "Failed to deliver SSE event for job %s; removing subscriber",
+                    job_id,
+                )
+                dead.append(q)
+        # Clean up broken subscribers outside the iteration
+        for q in dead:
+            self._subscribers.remove(q)
 
     def shutdown(self):
         """Graceful shutdown."""

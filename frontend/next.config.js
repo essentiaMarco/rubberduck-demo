@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Prevent Next.js from stripping trailing slashes on API routes
+  // (FastAPI expects trailing slashes on some endpoints)
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     return [
       {

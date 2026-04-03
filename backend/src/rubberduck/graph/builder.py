@@ -19,7 +19,9 @@ def build_graph(
     layers: list[str] | None = None,
     entity_types: list[str] | None = None,
     min_confidence: float = 0.0,
-) -> nx.Graph:
+    date_start: str | None = None,
+    date_end: str | None = None,
+) -> nx.DiGraph:
     """Build a NetworkX graph from the database.
 
     Parameters
@@ -35,9 +37,9 @@ def build_graph(
 
     Returns
     -------
-    networkx.Graph with entity nodes and relationship edges.
+    networkx.DiGraph with entity nodes and directed relationship edges.
     """
-    G = nx.Graph()
+    G = nx.DiGraph()
 
     # ── Load entities (nodes) ─────────────────────────────────
     entity_query = db.query(Entity)
@@ -61,6 +63,10 @@ def build_graph(
         rel_query = rel_query.filter(Relationship.layer.in_(layers))
     if min_confidence > 0.0:
         rel_query = rel_query.filter(Relationship.confidence >= min_confidence)
+    if date_start:
+        rel_query = rel_query.filter(Relationship.created_at >= date_start)
+    if date_end:
+        rel_query = rel_query.filter(Relationship.created_at <= date_end)
 
     for rel in rel_query.all():
         source_id = rel.source_entity_id

@@ -3,21 +3,26 @@
 import { useEffect, useState } from "react";
 import { evidence } from "@/lib/api";
 import Link from "next/link";
+import DateRangeFilter from "@/components/filters/DateRangeFilter";
 
 export default function EvidencePage() {
   const [files, setFiles] = useState<any>({ items: [], total: 0 });
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("");
+  const [dateStart, setDateStart] = useState<string | null>(null);
+  const [dateEnd, setDateEnd] = useState<string | null>(null);
 
   useEffect(() => {
     const params: Record<string, string> = { page: String(page), page_size: "25" };
     if (filter) params.parse_status = filter;
+    if (dateStart) params.date_start = dateStart;
+    if (dateEnd) params.date_end = dateEnd;
     evidence.listFiles(params).then(setFiles).catch(console.error);
-  }, [page, filter]);
+  }, [page, filter, dateStart, dateEnd]);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Evidence Files</h1>
         <div className="flex gap-2">
           {["", "completed", "pending", "failed", "unsupported"].map((s) => (
@@ -34,6 +39,14 @@ export default function EvidencePage() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mb-4">
+        <DateRangeFilter
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+          onChange={(s, e) => { setDateStart(s); setDateEnd(e); setPage(1); }}
+        />
       </div>
 
       <div className="bg-forensic-surface rounded-lg border border-forensic-border overflow-hidden">

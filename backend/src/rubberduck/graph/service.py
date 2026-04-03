@@ -28,13 +28,15 @@ def get_full_graph(
     entity_types: list[str] | None = None,
     min_confidence: float = 0.0,
     limit: int = 500,
+    date_start: str | None = None,
+    date_end: str | None = None,
 ) -> GraphData:
     """Build and return the full graph, optionally truncated to *limit* nodes.
 
     Nodes are kept in descending order of degree so the most connected
     entities are always included when the graph is truncated.
     """
-    G = build_graph(db, layers=layers, entity_types=entity_types, min_confidence=min_confidence)
+    G = build_graph(db, layers=layers, entity_types=entity_types, min_confidence=min_confidence, date_start=date_start, date_end=date_end)
     return _graph_to_data(G, limit=limit)
 
 

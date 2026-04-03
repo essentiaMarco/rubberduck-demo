@@ -79,6 +79,7 @@ def _job_dict(job: Job) -> dict:
         "progress": job.progress,
         "total_items": job.total_items,
         "processed_items": job.processed_items,
+        "current_step": job.current_step,
         "error": job.error,
         "created_at": str(job.created_at) if job.created_at else None,
         "started_at": str(job.started_at) if job.started_at else None,

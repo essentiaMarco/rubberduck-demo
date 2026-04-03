@@ -5,10 +5,10 @@ import { hypotheses } from "@/lib/api";
 import Link from "next/link";
 
 export default function HypothesesPage() {
-  const [data, setData] = useState<any>({ items: [] });
+  const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
-    hypotheses.list().then(setData).catch(console.error);
+    hypotheses.list().then((r) => setData(Array.isArray(r) ? r : r?.items || [])).catch(console.error);
   }, []);
 
   return (
@@ -16,7 +16,7 @@ export default function HypothesesPage() {
       <h1 className="text-2xl font-bold mb-6">Hypothesis Testing</h1>
 
       <div className="space-y-4">
-        {data.items?.map((h: any) => (
+        {data.map((h: any) => (
           <div key={h.id} className="bg-forensic-surface rounded-lg border border-forensic-border p-6">
             <div className="flex items-center justify-between mb-2">
               <Link href={`/hypotheses/${h.id}`} className="text-lg font-semibold text-forensic-accent hover:underline">
@@ -45,7 +45,7 @@ export default function HypothesesPage() {
           </div>
         ))}
 
-        {(!data.items || data.items.length === 0) && (
+        {data.length === 0 && (
           <p className="text-slate-500 text-sm">No hypotheses yet. Create one to start testing.</p>
         )}
       </div>

@@ -1,26 +1,65 @@
 """DuckDB connection manager for analytical queries over Parquet files."""
 
+import logging
+
 import duckdb
 
 from rubberduck.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 def get_duckdb() -> duckdb.DuckDBPyConnection:
-    """Create a DuckDB connection configured for our Parquet data."""
+    """Create a DuckDB connection configured for our Parquet data.
+
+    Gracefully handles the case where Parquet directories are empty or
+    missing — this is normal before the first timeline rebuild.
+    """
     conn = duckdb.connect(str(settings.duckdb_path))
-    # Register convenient views over Parquet directories
     parquet_dir = settings.parquet_dir
     events_path = str(parquet_dir / "events" / "*.parquet")
     comms_path = str(parquet_dir / "communications" / "*.parquet")
 
-    conn.execute(f"""
-        CREATE OR REPLACE VIEW events AS
-        SELECT * FROM read_parquet('{events_path}', union_by_name=true, hive_partitioning=false)
-    """)
-    conn.execute(f"""
-        CREATE OR REPLACE VIEW communications AS
-        SELECT * FROM read_parquet('{comms_path}', union_by_name=true, hive_partitioning=false)
-    """)
+    # Register views only if matching parquet files exist.
+    # DuckDB throws IOException when the glob matches zero files.
+    try:
+        conn.execute(f"""
+            CREATE OR REPLACE VIEW events AS
+            SELECT * FROM read_parquet('{events_path}', union_by_name=true, hive_partitioning=false)
+        """)
+    except duckdb.IOException:
+        logger.debug("No event parquet files found at %s — creating empty events view", events_path)
+        conn.execute("""
+            CREATE OR REPLACE VIEW events AS
+            SELECT
+                NULL::VARCHAR AS event_id,
+                NULL::VARCHAR AS case_id,
+                NULL::VARCHAR AS file_id,
+                NULL::VARCHAR AS file_name,
+                NULL::VARCHAR AS event_type,
+                NULL::VARCHAR AS event_subtype,
+                NULL::VARCHAR AS timestamp_utc,
+                NULL::VARCHAR AS timestamp_orig,
+                NULL::VARCHAR AS timezone_orig,
+                NULL::VARCHAR AS actor_entity_id,
+                NULL::VARCHAR AS actor_name,
+                NULL::VARCHAR AS target_entity_id,
+                NULL::VARCHAR AS target_name,
+                NULL::VARCHAR AS summary,
+                NULL::VARCHAR AS raw_data,
+                NULL::DOUBLE  AS confidence
+            WHERE false
+        """)
+
+    try:
+        conn.execute(f"""
+            CREATE OR REPLACE VIEW communications AS
+            SELECT * FROM read_parquet('{comms_path}', union_by_name=true, hive_partitioning=false)
+        """)
+    except duckdb.IOException:
+        logger.debug("No communications parquet files found at %s — creating empty view", comms_path)
+        conn.execute("CREATE OR REPLACE VIEW communications AS SELECT 1 WHERE false")
+
     return conn
 
 

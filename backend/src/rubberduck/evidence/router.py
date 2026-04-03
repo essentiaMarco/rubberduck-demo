@@ -4,7 +4,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+import re
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -143,10 +145,20 @@ def ingest_upload(
     tmp.close()
     tmp_path = Path(tmp.name)
 
+    def _ingest_with_cleanup(thread_db, job_id, **kw):
+        """Wrapper that cleans up the temp file regardless of success or failure."""
+        try:
+            return IngestService.ingest_upload(thread_db, job_id, **kw)
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass  # best-effort cleanup
+
     job_id = job_manager.submit(
         db,
         "ingest",
-        IngestService.ingest_upload,
+        _ingest_with_cleanup,
         params={"source_id": source_id, "filename": file.filename},
         source_id=source_id,
         file_path=tmp_path,
@@ -190,6 +202,8 @@ def list_files(
     source_id: str | None = None,
     file_ext: str | None = None,
     parse_status: str | None = None,
+    date_start: str | None = Query(None),
+    date_end: str | None = Query(None),
     page: int = 1,
     page_size: int = 50,
     db: Session = Depends(get_db),
@@ -201,6 +215,10 @@ def list_files(
         query = query.filter(FileModel.file_ext == file_ext)
     if parse_status:
         query = query.filter(FileModel.parse_status == parse_status)
+    if date_start:
+        query = query.filter(FileModel.created_at >= date_start)
+    if date_end:
+        query = query.filter(FileModel.created_at <= date_end)
 
     total = query.count()
     files = query.order_by(FileModel.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
@@ -216,7 +234,7 @@ def list_files(
 def get_file(file_id: str, db: Session = Depends(get_db)):
     f = db.query(FileModel).get(file_id)
     if not f:
-        return {"error": "File not found"}, 404
+        raise HTTPException(status_code=404, detail="File not found")
 
     custody = (
         db.query(ChainOfCustody)
@@ -234,27 +252,144 @@ def get_file(file_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/files/{file_id}/content")
-def get_file_content(file_id: str, db: Session = Depends(get_db)):
+def get_file_content(
+    file_id: str,
+    max_bytes: int = Query(500_000, ge=0, le=10_000_000, description="Max content bytes to return (0 = unlimited)"),
+    offset: int = Query(0, ge=0, description="Byte offset to start reading from"),
+    db: Session = Depends(get_db),
+):
     f = db.query(FileModel).get(file_id)
     if not f or not f.parsed_path:
-        return {"error": "Parsed content not available"}, 404
+        raise HTTPException(status_code=404, detail="Parsed content not available")
 
     content_path = Path(f.parsed_path) / "content.txt"
-    if content_path.exists():
-        return {"content": content_path.read_text(encoding="utf-8"), "file_id": file_id}
-    return {"content": "", "file_id": file_id}
+    if not content_path.exists():
+        return {"content": "", "file_id": file_id, "total_size": 0, "truncated": False}
+
+    total_size = content_path.stat().st_size
+
+    if max_bytes == 0:
+        # Unlimited — read the whole file (use with caution on large files)
+        content = content_path.read_text(encoding="utf-8", errors="replace")
+        return {"content": content, "file_id": file_id, "total_size": total_size, "truncated": False}
+
+    # Read a bounded chunk to avoid memory issues on large files (e.g. 7GB mbox)
+    with open(content_path, "r", encoding="utf-8", errors="replace") as fh:
+        if offset > 0:
+            fh.seek(offset)
+        content = fh.read(max_bytes)
+
+    truncated = (offset + len(content.encode("utf-8"))) < total_size
+
+    return {
+        "content": content,
+        "file_id": file_id,
+        "total_size": total_size,
+        "truncated": truncated,
+        "offset": offset,
+    }
+
+
+@router.get("/files/{file_id}/content/search")
+def search_file_content(
+    file_id: str,
+    q: str = Query(..., min_length=1, description="Search query to find within the file"),
+    context_chars: int = Query(300, ge=50, le=2000, description="Characters of context around each match"),
+    max_matches: int = Query(20, ge=1, le=100, description="Maximum matches to return"),
+    db: Session = Depends(get_db),
+):
+    """Search within a specific file's content and return matching sections.
+
+    Returns contextual snippets around each match with the search term
+    highlighted in ``<mark>`` tags.  This is far more useful than sequential
+    reading for large files like mbox archives (500 MB+).
+    """
+    f = db.query(FileModel).get(file_id)
+    if not f or not f.parsed_path:
+        raise HTTPException(status_code=404, detail="Parsed content not available")
+
+    content_path = Path(f.parsed_path) / "content.txt"
+    if not content_path.exists():
+        return {"matches": [], "total_matches": 0, "query": q, "file_id": file_id}
+
+    total_size = content_path.stat().st_size
+
+    # For very large files, read in chunks and search
+    matches = []
+    pattern = re.compile(re.escape(q), re.IGNORECASE)
+
+    # Read file in manageable chunks (2 MB) with overlap to catch matches at boundaries
+    chunk_size = 2 * 1024 * 1024
+    overlap = context_chars + len(q)
+    file_offset = 0
+
+    with open(content_path, "r", encoding="utf-8", errors="replace") as fh:
+        carry = ""
+        while len(matches) < max_matches:
+            raw = fh.read(chunk_size)
+            if not raw:
+                # Search the remaining carry
+                if carry:
+                    for m in pattern.finditer(carry):
+                        if len(matches) >= max_matches:
+                            break
+                        start = max(0, m.start() - context_chars)
+                        end = min(len(carry), m.end() + context_chars)
+                        snippet = carry[start:end]
+                        highlighted = pattern.sub(
+                            lambda x: f"<mark>{x.group()}</mark>", snippet
+                        )
+                        matches.append({
+                            "snippet": highlighted,
+                            "byte_offset": file_offset - len(carry) + m.start(),
+                            "match_index": len(matches),
+                        })
+                break
+
+            text_block = carry + raw
+            # Keep the last `overlap` chars for the next iteration to handle boundary matches
+            searchable = text_block[:-overlap] if len(text_block) > overlap else text_block
+            carry = text_block[len(searchable):]
+
+            for m in pattern.finditer(searchable):
+                if len(matches) >= max_matches:
+                    break
+                start = max(0, m.start() - context_chars)
+                end = min(len(searchable), m.end() + context_chars)
+                snippet = searchable[start:end]
+                highlighted = pattern.sub(
+                    lambda x: f"<mark>{x.group()}</mark>", snippet
+                )
+                matches.append({
+                    "snippet": highlighted,
+                    "byte_offset": file_offset + m.start(),
+                    "match_index": len(matches),
+                })
+
+            file_offset += len(searchable)
+
+    # Count total matches (approximate for huge files — just use what we found)
+    total_matches = len(matches)
+
+    return {
+        "matches": matches,
+        "total_matches": total_matches,
+        "query": q,
+        "file_id": file_id,
+        "total_size": total_size,
+    }
 
 
 @router.get("/files/{file_id}/original")
 def get_file_original(file_id: str, db: Session = Depends(get_db)):
     f = db.query(FileModel).get(file_id)
     if not f or not f.stored_path:
-        return {"error": "Original not available"}, 404
+        raise HTTPException(status_code=404, detail="Original not available")
 
     stored = Path(f.stored_path)
     if stored.exists():
         return FileResponse(stored, filename=f.file_name, media_type=f.mime_type)
-    return {"error": "File not found on disk"}, 404
+    raise HTTPException(status_code=404, detail="File not found on disk")
 
 
 @router.get("/files/{file_id}/custody")

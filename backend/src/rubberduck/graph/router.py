@@ -12,6 +12,8 @@ from rubberduck.db.sqlite import get_db
 from rubberduck.graph import service as graph_service
 from rubberduck.graph.analyzer import analyze
 from rubberduck.graph.builder import build_graph
+from rubberduck.graph.relationships import extract_cooccurrence_relationships
+from rubberduck.jobs.manager import job_manager
 from rubberduck.schemas.graph import (
     GraphAnalysis,
     GraphData,
@@ -29,6 +31,8 @@ def get_full_graph(
     entity_types: list[str] | None = Query(None, description="Filter by entity types"),
     min_confidence: float = Query(0.0, ge=0.0, le=1.0, description="Minimum confidence"),
     limit: int = Query(500, ge=1, le=5000, description="Max nodes to return"),
+    date_start: str | None = Query(None),
+    date_end: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """Return the full entity relationship graph with optional filtering."""
@@ -38,6 +42,8 @@ def get_full_graph(
         entity_types=entity_types,
         min_confidence=min_confidence,
         limit=limit,
+        date_start=date_start,
+        date_end=date_end,
     )
 
 
@@ -86,6 +92,20 @@ def get_analysis(
     """Run graph analysis: centrality, communities, bridges, isolated nodes."""
     G = build_graph(db, layers=layers, entity_types=entity_types, min_confidence=min_confidence)
     return analyze(G)
+
+
+@router.post("/build-relationships")
+def build_relationships(db: Session = Depends(get_db)):
+    """Trigger co-occurrence relationship extraction as a background job.
+
+    Analyzes entity mentions to find entities that co-occur in the same file,
+    and creates Relationship records. This populates the graph with edges.
+    """
+    def _build_job(thread_db: Session, job_id: str) -> dict:
+        return extract_cooccurrence_relationships(thread_db)
+
+    job_id = job_manager.submit(db, "build_relationships", _build_job, params={})
+    return {"job_id": job_id, "message": "Relationship extraction started"}
 
 
 @router.post("/export")
