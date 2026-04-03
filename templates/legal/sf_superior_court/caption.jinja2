@@ -1,0 +1,21 @@
+{# San Francisco Superior Court caption block #}
+{{ watermark }}
+
+{{ court | default("SUPERIOR COURT OF THE STATE OF CALIFORNIA") }}
+{{ county | default("COUNTY OF SAN FRANCISCO") }}
+{{ division | default("PROBATE DIVISION") }}
+
+Case No. {{ case_number | default("__________") }}
+
+In the Matter of:
+{{ decedent_name | default("[DECEDENT NAME]") }}, Deceased.
+
+{{ petitioner_name | default("[PETITIONER NAME]") }}, Petitioner.
+
+{{ doc_title | default("[DOCUMENT TITLE]") }}
+
+Department: {{ department | default("___") }}
+Hearing Date: {{ hearing_date | default("___________") }}
+Hearing Time: {{ hearing_time | default("___________") }}
+
+{{ watermark }}

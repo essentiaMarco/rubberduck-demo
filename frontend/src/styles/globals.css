@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0f172a;
+  --bg-surface: #1e293b;
+  --border: #334155;
+  --accent: #38bdf8;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+}
+
+body {
+  @apply bg-forensic-bg text-slate-100;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-forensic-bg;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-forensic-border rounded;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-500;
+}
+
+/* Draft watermark overlay */
+.draft-watermark {
+  position: relative;
+}
+.draft-watermark::after {
+  content: "DRAFT";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 6rem;
+  font-weight: bold;
+  color: rgba(239, 68, 68, 0.1);
+  pointer-events: none;
+  z-index: 10;
+}

@@ -1,0 +1,32 @@
+{
+  "google": {
+    "name": "Google LLC",
+    "service_address": "Google LLC, Legal Investigations Support, 1600 Amphitheatre Parkway, Mountain View, CA 94043",
+    "legal_process_url": "https://support.google.com/legal",
+    "takeout_products": [
+      "Gmail", "Contacts", "Drive", "Photos", "Calendar",
+      "YouTube", "Maps", "Chrome", "Google Voice",
+      "My Activity", "Location History", "Android/Play"
+    ],
+    "notes": "Google may require separate requests per product. Location History and Maps Timeline are stored separately from My Activity. Some data may require court order rather than subpoena."
+  },
+  "apple": {
+    "name": "Apple Inc.",
+    "service_address": "Apple Inc., Legal Process Team, One Apple Park Way, Cupertino, CA 95014",
+    "legal_process_url": "https://www.apple.com/legal/privacy/law-enforcement.html",
+    "products": [
+      "iCloud Mail", "iCloud Drive", "Photos", "Contacts", "Calendar",
+      "Notes", "Messages", "Find My", "Safari", "Health"
+    ],
+    "notes": "Apple requires court orders for content data. Device backups may contain additional data categories."
+  },
+  "microsoft": {
+    "name": "Microsoft Corporation",
+    "service_address": "Microsoft Corporation, Legal and Corporate Affairs, One Microsoft Way, Redmond, WA 98052",
+    "legal_process_url": "https://www.microsoft.com/en-us/legal/compliance",
+    "products": [
+      "Outlook", "OneDrive", "Skype", "Teams", "Edge", "Microsoft 365"
+    ],
+    "notes": "Microsoft accepts legal process through their online portal."
+  }
+}
