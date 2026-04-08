@@ -1,0 +1,23 @@
+<span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+
+{% if job.status == 'running' %}
+  <span class="spinner" style="margin-left: 0.5rem;"></span>
+  <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.5rem;">Analyzing...</span>
+{% elif job.status == 'completed' %}
+  <span style="color: var(--success); font-size: 0.85rem; margin-left: 0.5rem;">
+    Done! <a href="/sessions/{{ job.id }}">View results</a>
+  </span>
+{% elif job.status == 'failed' %}
+  <span style="color: var(--error); font-size: 0.85rem; margin-left: 0.5rem;">
+    {{ job.error[:100] if job.error else 'Unknown error' }}
+  </span>
+{% endif %}
+
+{% if job.status in ['pending', 'running'] %}
+<div
+  hx-get="/jobs/{{ job.id }}"
+  hx-trigger="every 3s"
+  hx-swap="outerHTML"
+  style="display: contents;"
+></div>
+{% endif %}

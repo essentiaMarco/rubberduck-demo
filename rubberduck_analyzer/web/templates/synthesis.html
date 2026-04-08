@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Synthesis - RubberDuck Analyzer{% endblock %}
+{% block content %}
+<h1 style="margin-bottom: 1.5rem;">Cross-Tester Synthesis</h1>
+
+<div class="card">
+  <h2>Run Synthesis</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">
+    Analyze patterns across all {{ session_count }} sessions. Generates an Excel workbook and Markdown engineering report.
+    {% if session_count < 3 %}
+    <br><span style="color: var(--warning);">Note: 3+ sessions recommended for meaningful patterns.</span>
+    {% endif %}
+  </p>
+  <form hx-post="/synthesis/run" hx-target="#synth-result">
+    <button type="submit" class="btn btn-primary" {% if session_count == 0 %}disabled{% endif %}>
+      Run Synthesis ({{ session_count }} sessions)
+      <span class="htmx-indicator"><span class="spinner"></span></span>
+    </button>
+  </form>
+  <div id="synth-result" style="margin-top: 1rem;"></div>
+</div>
+
+{% if reports %}
+<div class="card" style="margin-top: 1rem;">
+  <h2>Generated Reports</h2>
+  <table>
+    <thead><tr><th>File</th><th>Size</th><th></th></tr></thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ (r.size / 1024) | round(1) }} KB</td>
+        <td><a href="/synthesis/report/{{ r.name }}" class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">Download</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

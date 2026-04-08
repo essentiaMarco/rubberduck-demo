@@ -1,0 +1,12 @@
+<div class="card" style="border-color: var(--accent);">
+  <h3>{{ milestone }} Analysis Submitted</h3>
+  <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0;">Job ID: <code>{{ job_id }}</code></p>
+  <div
+    hx-get="/jobs/{{ job_id }}"
+    hx-trigger="load, every 3s"
+    hx-swap="innerHTML"
+  >
+    <span class="badge badge-pending">pending</span>
+    <span class="spinner" style="margin-left: 0.5rem;"></span>
+  </div>
+</div>

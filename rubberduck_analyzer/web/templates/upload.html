@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Upload - RubberDuck Analyzer{% endblock %}
+{% block content %}
+<h1 style="margin-bottom: 1.5rem;">Upload & Analyze</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('m1')">M1 - Live Interview</div>
+  <div class="tab" onclick="showTab('m2')">M2 - Independent Use</div>
+  <div class="tab" onclick="showTab('m3')">M3 - Proof of Value</div>
+</div>
+
+<!-- M1 Form -->
+<div id="tab-m1" class="card">
+  <h2>M1: Live Interview Analysis</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the interview transcript. Video is optional.</p>
+  <form hx-post="/analyze/m1" hx-target="#result-area" hx-encoding="multipart/form-data">
+    <div class="form-group">
+      <label>Transcript file (required)</label>
+      <input type="file" name="transcript" accept=".txt,.md" required>
+    </div>
+    <div class="form-group">
+      <label>Video recording (optional)</label>
+      <input type="file" name="video" accept="video/*">
+    </div>
+    <div class="form-group">
+      <label>Tester name (optional)</label>
+      <input type="text" name="tester_name" placeholder="e.g. Samuel Tolossa">
+    </div>
+    <button type="submit" class="btn btn-primary">
+      Analyze M1
+      <span class="htmx-indicator"><span class="spinner"></span></span>
+    </button>
+  </form>
+</div>
+
+<!-- M2 Form -->
+<div id="tab-m2" class="card" style="display:none;">
+  <h2>M2: Independent Use Analysis</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the 3-5 sentence written deliverable. Video and transcript are optional.</p>
+  <form hx-post="/analyze/m2" hx-target="#result-area" hx-encoding="multipart/form-data">
+    <div class="form-group">
+      <label>Written deliverable (required)</label>
+      <input type="file" name="written" accept=".txt,.md" required>
+    </div>
+    <div class="form-group">
+      <label>Screen recording (optional)</label>
+      <input type="file" name="video" accept="video/*">
+    </div>
+    <div class="form-group">
+      <label>Transcript (optional)</label>
+      <input type="file" name="transcript" accept=".txt,.md">
+    </div>
+    <div class="form-group">
+      <label>Tester name</label>
+      <input type="text" name="tester_name" placeholder="e.g. Samuel Tolossa">
+    </div>
+    <button type="submit" class="btn btn-primary">
+      Analyze M2
+      <span class="htmx-indicator"><span class="spinner"></span></span>
+    </button>
+  </form>
+</div>
+
+<!-- M3 Form -->
+<div id="tab-m3" class="card" style="display:none;">
+  <h2>M3: Proof-of-Value Comparison</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload both videos (with and without RubberDuck), the written comparison, and the task proposal.</p>
+  <form hx-post="/analyze/m3" hx-target="#result-area" hx-encoding="multipart/form-data">
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Video WITHOUT RubberDuck (required)</label>
+        <input type="file" name="video_without" accept="video/*" required>
+      </div>
+      <div class="form-group">
+        <label>Video WITH RubberDuck (required)</label>
+        <input type="file" name="video_with" accept="video/*" required>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Written comparison (required)</label>
+        <input type="file" name="comparison" accept=".txt,.md" required>
+      </div>
+      <div class="form-group">
+        <label>Task proposal (required)</label>
+        <input type="file" name="proposal" accept=".txt,.md" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Tester name</label>
+      <input type="text" name="tester_name" placeholder="e.g. Samuel Tolossa">
+    </div>
+    <button type="submit" class="btn btn-primary">
+      Analyze M3
+      <span class="htmx-indicator"><span class="spinner"></span></span>
+    </button>
+  </form>
+</div>
+
+<div id="result-area" style="margin-top: 1.5rem;"></div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).style.display = 'block';
+  event.target.classList.add('active');
+}
+</script>
+{% endblock %}

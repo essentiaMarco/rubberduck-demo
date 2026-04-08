@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Sessions - RubberDuck Analyzer{% endblock %}
+{% block content %}
+<h1 style="margin-bottom: 1.5rem;">All Sessions</h1>
+
+{% if sessions %}
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Tester</th>
+        <th>Date</th>
+        <th>Milestone</th>
+        <th>IDE</th>
+        <th>Trust</th>
+        <th>M3 Candidacy</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr>
+        <td><a href="/sessions/{{ s.id }}">{{ s.tester }}</a></td>
+        <td>{{ s.date }}</td>
+        <td><span class="badge badge-running">{{ s.milestone }}</span></td>
+        <td>{{ s.ide or '-' }}</td>
+        <td>{{ s.trust_score or '-' }}</td>
+        <td>
+          {% if s.m3_rating %}
+          <span class="badge badge-{{ s.m3_rating }}">{{ s.m3_rating }}</span>
+          {% else %}-{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <p style="color: var(--text-muted);">No sessions analyzed yet. <a href="/analyze/">Upload a transcript</a> to get started.</p>
+</div>
+{% endif %}
+{% endblock %}

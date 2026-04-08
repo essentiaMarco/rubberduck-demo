@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - RubberDuck Analyzer{% endblock %}
+{% block content %}
+<h1 style="margin-bottom: 1.5rem;">Dashboard</h1>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">{{ session_count }}</div>
+    <div class="stat-label">Total Sessions</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ sessions|selectattr('milestone', 'equalto', 'M1')|list|length }}</div>
+    <div class="stat-label">M1 Sessions</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ sessions|selectattr('milestone', 'equalto', 'M2')|list|length }}</div>
+    <div class="stat-label">M2 Sessions</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ sessions|selectattr('milestone', 'equalto', 'M3')|list|length }}</div>
+    <div class="stat-label">M3 Sessions</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>Recent Sessions</h2>
+    {% if sessions %}
+    <table>
+      <thead><tr><th>Tester</th><th>Date</th><th>Type</th><th>Trust</th><th>M3</th></tr></thead>
+      <tbody>
+        {% for s in sessions[:10] %}
+        <tr>
+          <td><a href="/sessions/{{ s.file.replace('.json', '') }}">{{ s.tester }}</a></td>
+          <td>{{ s.date }}</td>
+          <td><span class="badge badge-running">{{ s.milestone }}</span></td>
+          <td>{{ s.trust_score or '-' }}</td>
+          <td>
+            {% if s.m3_rating %}
+            <span class="badge badge-{{ s.m3_rating }}">{{ s.m3_rating }}</span>
+            {% else %}-{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted);">No sessions yet. <a href="/analyze/">Upload a transcript</a> to get started.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Recent Jobs</h2>
+    {% if jobs %}
+    <table>
+      <thead><tr><th>Job ID</th><th>Type</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td>{{ j.id }}</td>
+          <td>{{ j.milestone }}</td>
+          <td><span class="badge badge-{{ j.status }}">{{ j.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted);">No analysis jobs yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div style="margin-top: 1rem;">
+  <a href="/analyze/" class="btn btn-primary">Upload & Analyze</a>
+  <a href="/synthesis/" class="btn btn-secondary" style="margin-left: 0.5rem;">Run Synthesis</a>
+</div>
+{% endblock %}
