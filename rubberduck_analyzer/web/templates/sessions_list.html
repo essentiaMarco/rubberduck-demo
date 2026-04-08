@@ -14,11 +14,12 @@
         <th>IDE</th>
         <th>Trust</th>
         <th>M3 Candidacy</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       {% for s in sessions %}
-      <tr>
+      <tr id="session-row-{{ s.id }}">
         <td><a href="/sessions/{{ s.id }}">{{ s.tester }}</a></td>
         <td>{{ s.date }}</td>
         <td><span class="badge badge-running">{{ s.milestone }}</span></td>
@@ -28,6 +29,14 @@
           {% if s.m3_rating %}
           <span class="badge badge-{{ s.m3_rating }}">{{ s.m3_rating }}</span>
           {% else %}-{% endif %}
+        </td>
+        <td>
+          <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; background: var(--error); color: white;"
+            hx-delete="/sessions/{{ s.id }}"
+            hx-confirm="Delete session for {{ s.tester }}?"
+            hx-target="#session-row-{{ s.id }}"
+            hx-swap="outerHTML"
+          >Delete</button>
         </td>
       </tr>
       {% endfor %}

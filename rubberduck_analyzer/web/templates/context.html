@@ -36,7 +36,7 @@
     <h2>Ingested Documents</h2>
     {% if documents %}
     <table>
-      <thead><tr><th>Type</th><th>Source</th><th>Chunks</th><th>Date</th></tr></thead>
+      <thead><tr><th>Type</th><th>Source</th><th>Chunks</th><th>Date</th><th></th></tr></thead>
       <tbody>
         {% for doc in documents %}
         <tr>
@@ -44,6 +44,14 @@
           <td>{{ doc.source }}</td>
           <td>{{ doc.chunks }}</td>
           <td>{{ doc.date or '-' }}</td>
+          <td>
+            <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; background: var(--error); color: white;"
+              hx-delete="/context/{{ doc.type }}/{{ doc.source }}"
+              hx-confirm="Delete {{ doc.chunks }} chunks from {{ doc.source }}?"
+              hx-target="closest tr"
+              hx-swap="outerHTML"
+            >Delete</button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

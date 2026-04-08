@@ -59,3 +59,20 @@ async def download_report(filename: str):
     if not path.exists():
         return HTMLResponse("<h1>Report not found</h1>", status_code=404)
     return FileResponse(str(path), filename=filename)
+
+
+@router.delete("/report/{filename}")
+async def delete_report(filename: str):
+    """Delete a generated report file."""
+    # Sanitize
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return HTMLResponse("Invalid filename", status_code=400)
+    path = (REPORTS_DIR / filename).resolve()
+    if not str(path).startswith(str(REPORTS_DIR.resolve())):
+        return HTMLResponse("Invalid path", status_code=400)
+    if not path.exists():
+        return HTMLResponse("Report not found", status_code=404)
+    path.unlink()
+    return HTMLResponse(
+        '<tr><td colspan="3" style="color: var(--success);">Report deleted.</td></tr>'
+    )

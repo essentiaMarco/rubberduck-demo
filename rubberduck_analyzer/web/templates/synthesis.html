@@ -30,7 +30,15 @@
       <tr>
         <td>{{ r.name }}</td>
         <td>{{ (r.size / 1024) | round(1) }} KB</td>
-        <td><a href="/synthesis/report/{{ r.name }}" class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">Download</a></td>
+        <td>
+          <a href="/synthesis/report/{{ r.name }}" class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">Download</a>
+          <button class="btn btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.8rem; background: var(--error); color: white; margin-left: 0.25rem;"
+            hx-delete="/synthesis/report/{{ r.name }}"
+            hx-confirm="Delete report {{ r.name }}?"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+          >Delete</button>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

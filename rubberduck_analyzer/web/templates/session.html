@@ -71,7 +71,16 @@
     {% for key, value in session.facilitator_compliance.items() %}
     <div>
       <span style="color: var(--text-muted); font-size: 0.8rem;">{{ key | replace('_', ' ') }}:</span>
-      {% if value == true %}
+      {% if key in ['explained_tool_before_use', 'coached_prompts'] %}
+        {# These are VIOLATIONS when true — invert the color #}
+        {% if value == true %}
+          <span class="badge badge-failed">Yes (violation)</span>
+        {% elif value == false %}
+          <span class="badge badge-completed">No</span>
+        {% else %}
+          <span style="font-size: 0.85rem;">{{ value }}</span>
+        {% endif %}
+      {% elif value == true %}
         <span class="badge badge-completed">Yes</span>
       {% elif value == false %}
         <span class="badge badge-failed">No</span>
@@ -87,5 +96,11 @@
 <div style="margin-top: 1.5rem;">
   <a href="/sessions/{{ session_id }}/json" class="btn btn-secondary">Download JSON</a>
   <a href="/sessions/" class="btn btn-secondary" style="margin-left: 0.5rem;">Back to Sessions</a>
+  <button class="btn btn-secondary" style="margin-left: 0.5rem; background: var(--error); color: white;"
+    hx-delete="/sessions/{{ session_id }}"
+    hx-confirm="Delete this session? This cannot be undone."
+    hx-target="body"
+    hx-swap="innerHTML"
+  >Delete Session</button>
 </div>
 {% endblock %}

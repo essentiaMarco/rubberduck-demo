@@ -152,3 +152,24 @@ def search_context(query: str, doc_type: str | None = None) -> list[dict]:
         if query_lower in text.lower():
             results.append(chunk)
     return results
+
+
+def delete_context(source_file: str, doc_type: str | None = None) -> int:
+    """Delete all ingested chunks matching a source file (and optionally type).
+
+    Returns count of deleted chunk files.
+    """
+    if not CONTEXT_DIR.exists():
+        return 0
+
+    deleted = 0
+    for f in list(CONTEXT_DIR.glob("*.json")):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            if data.get("source_file") == source_file:
+                if doc_type is None or data.get("type") == doc_type:
+                    f.unlink()
+                    deleted += 1
+        except (json.JSONDecodeError, KeyError):
+            continue
+    return deleted

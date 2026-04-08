@@ -8,7 +8,9 @@ from fastapi import APIRouter, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from rubberduck_analyzer.context.product_context import ingest_document, load_context
+from fastapi.responses import JSONResponse
+
+from rubberduck_analyzer.context.product_context import ingest_document, load_context, delete_context
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -58,3 +60,15 @@ async def ingest(
     return templates.TemplateResponse(request, "_context_ingested.html", {
         "result": result,
     })
+
+
+@router.delete("/{doc_type}/{source_file}")
+async def delete_context_endpoint(doc_type: str, source_file: str):
+    """Delete all ingested chunks for a source file."""
+    # Sanitize: source_file should not contain path separators
+    if "/" in source_file or "\\" in source_file or ".." in source_file:
+        return JSONResponse({"error": "invalid source file name"}, status_code=400)
+    count = delete_context(source_file, doc_type)
+    if count == 0:
+        return JSONResponse({"error": "no chunks found"}, status_code=404)
+    return JSONResponse({"deleted_chunks": count, "source_file": source_file, "doc_type": doc_type})

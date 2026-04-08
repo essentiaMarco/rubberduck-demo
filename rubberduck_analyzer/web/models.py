@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -76,3 +77,35 @@ def list_jobs(milestone: str | None = None, limit: int = 50) -> list[dict]:
         ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def delete_job(job_id: str) -> dict:
+    """Delete a job record and its uploaded files.
+
+    Returns {"deleted": True} on success, {"error": reason} on failure.
+    Refuses to delete jobs with status 'pending' or 'running'.
+    """
+    job = get_job(job_id)
+    if job is None:
+        return {"error": "not_found"}
+    if job["status"] in ("pending", "running"):
+        return {"error": "job_still_active", "status": job["status"]}
+
+    # Remove uploaded files
+    upload_dir = Path("data/uploads") / job_id
+    if upload_dir.is_dir():
+        shutil.rmtree(upload_dir)
+
+    # Remove result file if it exists
+    if job.get("result_path"):
+        result_path = Path(job["result_path"])
+        if result_path.is_file():
+            result_path.unlink()
+
+    # Remove DB record
+    conn = _get_db()
+    conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
+    conn.commit()
+    conn.close()
+
+    return {"deleted": True, "job_id": job_id}

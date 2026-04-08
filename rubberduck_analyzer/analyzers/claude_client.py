@@ -10,7 +10,7 @@ import threading
 
 import anthropic
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-haiku-4-5-20251001"
 logger = logging.getLogger(__name__)
 
 RETRYABLE_STATUS_CODES = {429, 529}
