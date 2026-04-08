@@ -160,6 +160,88 @@ def _extract_product_feedback(client: anthropic.Anthropic, text: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Batched observation extraction (reduces 6 API calls to 2)
+# ---------------------------------------------------------------------------
+
+
+def _extract_observations_batch_1(client: anthropic.Anthropic, text: str) -> dict:
+    """Extract installation, prompting, and output review in a single API call."""
+    schema = """{
+  "installation": {
+    "setup_method": "pre-call | on-call | failed",
+    "setup_duration_minutes": <number or null>,
+    "blockers": [{"description": "<string>", "category": "token_confusion | mcp_config | ide_specific | github_app | indexing | other"}],
+    "facilitator_intervention_required": <boolean>,
+    "verbatim_quotes": ["<exact quote from transcript>"]
+  },
+  "prompting": {
+    "prompt_independence": <1-5>,
+    "prompt_style": "copied_from_website | natural_language | tool_specific | needed_help",
+    "mentions_tool_names": <boolean>,
+    "mcp_tool_usage": "used_correctly | ide_ignored_mcp | used_grep_instead | not_reached",
+    "verbatim_quotes": ["<exact quote>"]
+  },
+  "output_review": {
+    "review_depth": <1-5>,
+    "verified_against_knowledge": <boolean>,
+    "identified_errors": ["<string>"],
+    "identified_correct": ["<string>"],
+    "skipped_sections": ["<string>"],
+    "verbatim_quotes": ["<exact quote>"]
+  }
+}"""
+    return _call_claude(
+        client,
+        _SYSTEM_PREFIX,
+        f"Analyze this interview transcript and extract THREE observation areas in a single JSON response.\n\n"
+        f"1. INSTALLATION: setup friction, blockers, token confusion, MCP config issues, IDE problems\n"
+        f"2. PROMPTING: did they write own prompts or need help, tool names vs plain English, MCP usage\n"
+        f"3. OUTPUT REVIEW: did they read carefully, verify against knowledge, catch errors, skip sections\n\n"
+        f"Return JSON matching this schema:\n{schema}\n\n"
+        f"Verbatim quotes must be exact text from the transcript.\n\n"
+        f"TRANSCRIPT:\n{text}",
+    )
+
+
+def _extract_observations_batch_2(client: anthropic.Anthropic, text: str) -> dict:
+    """Extract LLM biases, trust, and product feedback in a single API call."""
+    schema = """{
+  "llm_biases": {
+    "pre_existing_bias": "<text>",
+    "bias_confirmed": <boolean>,
+    "bias_challenged": <boolean>,
+    "projected_limitations": ["<string>"],
+    "verbatim_quotes": ["<exact quote>"]
+  },
+  "trust": {
+    "trust_score": <float or null>,
+    "trust_moments": [{"direction": "increased | decreased", "trigger": "<string>"}],
+    "would_use_again": <boolean or null>,
+    "would_ship_based_on_output": <boolean or null>,
+    "comparison_to_other_tools": "<text>",
+    "verbatim_quotes": ["<exact quote>"]
+  },
+  "product_feedback": {
+    "feature_requests": [{"description": "<string>", "priority": "high | medium | low", "category": "<string>"}],
+    "complaints": [{"description": "<string>", "severity": "blocker | major | minor"}],
+    "comparisons_to_competitors": [{"competitor": "<name>", "feature": "<string>", "verdict": "RD_better | competitor_better | tie"}],
+    "verbatim_quotes": ["<exact quote>"]
+  }
+}"""
+    return _call_claude(
+        client,
+        _SYSTEM_PREFIX,
+        f"Analyze this interview transcript and extract THREE observation areas in a single JSON response.\n\n"
+        f"1. LLM BIASES: pre-existing AI distrust, assumptions from other tools, bias confirmed or challenged\n"
+        f"2. TRUST: explicit trust ratings, trust-building/breaking moments, would they use again or ship based on output\n"
+        f"3. PRODUCT FEEDBACK: feature requests, complaints, competitor comparisons (Copilot, CodeRabbit, etc.)\n\n"
+        f"Return JSON matching this schema:\n{schema}\n\n"
+        f"Verbatim quotes must be exact text from the transcript.\n\n"
+        f"TRANSCRIPT:\n{text}",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Session-level scoring
 # ---------------------------------------------------------------------------
 
@@ -286,32 +368,20 @@ def analyze_m1(
     if transcript.tester_name and not tester_name:
         metadata["tester_name"] = transcript.tester_name
 
-    # Step 3: Extract observations (6 areas)
-    print("Extracting installation observations...", file=sys.stderr)
-    installation = _extract_installation(client, text)
+    # Step 3: Extract observations (6 areas in 2 batched calls)
+    print("Extracting observations batch 1 (installation, prompting, output review)...", file=sys.stderr)
+    batch_1 = _extract_observations_batch_1(client, text)
 
-    print("Extracting prompting observations...", file=sys.stderr)
-    prompting = _extract_prompting(client, text)
-
-    print("Extracting output review observations...", file=sys.stderr)
-    output_review = _extract_output_review(client, text)
-
-    print("Extracting LLM bias observations...", file=sys.stderr)
-    llm_biases = _extract_llm_biases(client, text)
-
-    print("Extracting trust observations...", file=sys.stderr)
-    trust = _extract_trust(client, text)
-
-    print("Extracting product feedback...", file=sys.stderr)
-    product_feedback = _extract_product_feedback(client, text)
+    print("Extracting observations batch 2 (LLM biases, trust, product feedback)...", file=sys.stderr)
+    batch_2 = _extract_observations_batch_2(client, text)
 
     observations = {
-        "installation": installation,
-        "prompting": prompting,
-        "output_review": output_review,
-        "llm_biases": llm_biases,
-        "trust": trust,
-        "product_feedback": product_feedback,
+        "installation": batch_1.get("installation", {}),
+        "prompting": batch_1.get("prompting", {}),
+        "output_review": batch_1.get("output_review", {}),
+        "llm_biases": batch_2.get("llm_biases", {}),
+        "trust": batch_2.get("trust", {}),
+        "product_feedback": batch_2.get("product_feedback", {}),
     }
 
     # Validation rule 1: every area must be scored or marked insufficient
@@ -347,7 +417,7 @@ def analyze_m1(
         },
         "session": {
             "total_duration_minutes": metadata.get("total_duration_minutes"),
-            "setup_duration_minutes": installation.get("setup_duration_minutes"),
+            "setup_duration_minutes": observations.get("installation", {}).get("setup_duration_minutes"),
             "exploration_duration_minutes": phase_durations.get("exploration"),
             "debrief_duration_minutes": phase_durations.get("debrief"),
             "workflows_attempted": detected_ucs[:5],  # top 5 detected
