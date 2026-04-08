@@ -61,21 +61,24 @@
     <h2>Recent Jobs</h2>
     {% if jobs %}
     <table>
-      <thead><tr><th>Job</th><th>Type</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Tester</th><th>Type</th><th>Status</th><th></th></tr></thead>
       <tbody>
-        {% for j in jobs %}
+        {% for j in jobs[:5] %}
         <tr>
-          <td class="text-sm" style="font-family: monospace;">{{ j.id }}</td>
+          <td class="text-sm">{{ j.tester_name or j.id }}</td>
           <td><span class="badge badge-{{ j.milestone|lower if j.milestone in ['M1','M2','M3'] else 'info' }}">{{ j.milestone }}</span></td>
           <td><span class="badge badge-{{ j.status }}">{{ j.status }}</span></td>
           <td>
-            {% if j.status == 'completed' %}<a href="/sessions/{{ j.id }}" class="text-sm">View</a>
-            {% elif j.status == 'failed' %}<span class="text-xs text-muted" title="{{ j.error or '' }}">{{ (j.error or 'Unknown')[:40] }}...</span>{% endif %}
+            {% if j.status == 'completed' %}<a href="/sessions/{{ j.id }}" class="btn btn-secondary btn-sm">View</a>
+            {% elif j.status == 'failed' %}<span class="text-xs text-muted" title="{{ j.error or '' }}">failed</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    {% if jobs|length > 5 %}
+    <div class="mt-sm text-sm text-muted text-center">{{ jobs|length - 5 }} older jobs not shown</div>
+    {% endif %}
     {% else %}
     <div class="table-empty">No analysis jobs yet.</div>
     {% endif %}

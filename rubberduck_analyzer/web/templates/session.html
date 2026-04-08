@@ -170,15 +170,36 @@
           {% if key in ['explained_tool_before_use', 'coached_prompts', 'guided_too_much'] %}
             {% if value == true %}<span class="badge badge-failed">Yes (violation)</span>
             {% elif value == false %}<span class="badge badge-completed">No</span>
-            {% else %}{{ value }}{% endif %}
-          {% elif value == true %}<span class="badge badge-completed">Yes</span>
-          {% elif value == false %}<span class="badge badge-failed">No</span>
-          {% else %}{{ value }}{% endif %}
+            {% elif value is mapping %}<span class="badge badge-completed">Yes</span>
+            {% else %}<span class="text-sm">{{ value }}</span>{% endif %}
+          {% elif value is sameas true %}<span class="badge badge-completed">Yes</span>
+          {% elif value is sameas false %}<span class="badge badge-failed">No</span>
+          {% elif value is mapping %}
+            {# Complex dict value — show as structured summary #}
+            <span class="badge badge-completed">Yes</span>
+          {% elif value is none %}<span class="text-muted">-</span>
+          {% else %}<span class="text-sm wrap">{{ value }}</span>{% endif %}
         </div>
       </div>
       {% endif %}
     {% endfor %}
   </div>
+  {# Render complex compliance sub-sections (debrief, handoff details) #}
+  {% for key, value in session.facilitator_compliance.items() %}
+    {% if key not in ['violations', 'summary'] and value is mapping %}
+    <div class="mt-md">
+      <h3 class="mb-sm">{{ key | replace('_', ' ') | title }}</h3>
+      <div class="meta-grid">
+        {% for k, v in value.items() %}
+        <div class="meta-item">
+          <label>{{ k | replace('_', ' ') }}</label>
+          <div class="value text-sm wrap">{{ v }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
   {% if session.facilitator_compliance.violations %}
   <div class="mt-md">
     <h3 class="mb-sm">Violations</h3>

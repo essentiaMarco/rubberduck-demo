@@ -21,16 +21,28 @@ REPORTS_DIR = Path("data/reports")
 
 @router.get("/", response_class=HTMLResponse)
 async def synthesis_page(request: Request):
-    """Show synthesis page with existing reports."""
-    reports = []
+    """Show synthesis page with inline report and download links."""
+    # Downloadable files (exclude .gitkeep and patterns.json)
+    downloads = []
     if REPORTS_DIR.exists():
         for f in sorted(REPORTS_DIR.glob("*"), reverse=True):
-            reports.append({"name": f.name, "size": f.stat().st_size, "path": str(f)})
+            if f.name in (".gitkeep", "patterns.json"):
+                continue
+            downloads.append({"name": f.name, "size": f.stat().st_size})
+
+    # Read the markdown report inline, convert to HTML
+    report_html = None
+    report_path = REPORTS_DIR / "engineering_report.md"
+    if report_path.is_file():
+        import markdown
+        md_text = report_path.read_text(encoding="utf-8")
+        report_html = markdown.markdown(md_text, extensions=["extra", "nl2br"])
 
     session_count = len(list(SESSIONS_DIR.glob("*.json"))) if SESSIONS_DIR.exists() else 0
 
     return templates.TemplateResponse(request, "synthesis.html", {
-        "reports": reports,
+        "downloads": downloads,
+        "report_html": report_html,
         "session_count": session_count,
     })
 
@@ -64,7 +76,6 @@ async def download_report(filename: str):
 @router.delete("/report/{filename}")
 async def delete_report(filename: str):
     """Delete a generated report file."""
-    # Sanitize
     if "/" in filename or "\\" in filename or ".." in filename:
         return HTMLResponse("Invalid filename", status_code=400)
     path = (REPORTS_DIR / filename).resolve()
