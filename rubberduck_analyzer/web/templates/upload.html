@@ -1,149 +1,143 @@
 {% extends "base.html" %}
 {% block title %}Upload - RubberDuck Analyzer{% endblock %}
 {% block content %}
-<h1 style="margin-bottom: 1.5rem;">Upload & Analyze</h1>
-
-<div class="tabs">
-  <div class="tab active" onclick="showTab('m1')">M1 - Live Interview</div>
-  <div class="tab" onclick="showTab('m2')">M2 - Independent Use</div>
-  <div class="tab" onclick="showTab('m3')">M3 - Proof of Value</div>
+<div class="page-header">
+  <h1>Upload & Analyze</h1>
 </div>
 
-<!-- M1 Form -->
-<div id="tab-m1" class="card">
+<div class="tabs" role="tablist" aria-label="Milestone type">
+  <button class="tab active" role="tab" aria-selected="true" aria-controls="tab-m1" id="btn-m1" onclick="showTab('m1')">M1 - Live Interview</button>
+  <button class="tab" role="tab" aria-selected="false" aria-controls="tab-m2" id="btn-m2" onclick="showTab('m2')">M2 - Independent Use</button>
+  <button class="tab" role="tab" aria-selected="false" aria-controls="tab-m3" id="btn-m3" onclick="showTab('m3')">M3 - Proof of Value</button>
+</div>
+
+<!-- M1 -->
+<div id="tab-m1" role="tabpanel" aria-labelledby="btn-m1" class="card">
   <h2>M1: Live Interview Analysis</h2>
-  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the interview transcript. Video is optional. Metadata is auto-extracted from files.</p>
+  <p class="text-sm text-muted mb-md">Upload the interview transcript. Video is optional. Metadata is auto-extracted from filenames.</p>
   <form id="m1-form" hx-post="/analyze/m1" hx-target="#result-area" hx-encoding="multipart/form-data">
     <div class="form-group">
-      <label>Transcript file (required)</label>
+      <label>Transcript file <span class="hint">(required, .txt or .md)</span></label>
       <input type="file" name="transcript" accept=".txt,.md" required onchange="previewFiles('m1')">
     </div>
     <div class="form-group">
-      <label>Video recording (optional)</label>
+      <label>Video recording <span class="hint">(optional, enables frame analysis)</span></label>
       <input type="file" name="video" accept="video/*" onchange="previewFiles('m1')">
     </div>
-    <div id="m1-preview"></div>
+    <div id="m1-preview" aria-live="polite"></div>
     <div class="form-group">
-      <label>Tester name <span style="color: var(--text-muted); font-size: 0.75rem;">(auto-filled from file if blank)</span></label>
-      <input type="text" name="tester_name" id="m1-tester-name" placeholder="Auto-detected from filename/transcript">
+      <label>Tester name <span class="hint">(auto-detected from file if blank)</span></label>
+      <input type="text" name="tester_name" id="m1-tester-name" placeholder="Auto-detected from filename or transcript">
     </div>
     <button type="submit" class="btn btn-primary">
-      Analyze M1
-      <span class="htmx-indicator"><span class="spinner"></span></span>
+      Analyze M1 <span class="htmx-indicator"><span class="spinner"></span></span>
     </button>
   </form>
 </div>
 
-<!-- M2 Form -->
-<div id="tab-m2" class="card" style="display:none;">
+<!-- M2 -->
+<div id="tab-m2" role="tabpanel" aria-labelledby="btn-m2" class="card" style="display:none;">
   <h2>M2: Independent Use Analysis</h2>
-  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the 3-5 sentence written deliverable. Video and transcript are optional.</p>
+  <p class="text-sm text-muted mb-md">Upload the 3-5 sentence written deliverable. Video and transcript are optional.</p>
   <form id="m2-form" hx-post="/analyze/m2" hx-target="#result-area" hx-encoding="multipart/form-data">
     <div class="form-group">
-      <label>Written deliverable (required)</label>
+      <label>Written deliverable <span class="hint">(required)</span></label>
       <input type="file" name="written" accept=".txt,.md" required onchange="previewFiles('m2')">
     </div>
     <div class="form-group">
-      <label>Screen recording (optional)</label>
-      <input type="file" name="video" accept="video/*" onchange="previewFiles('m2')">
+      <label>Screen recording <span class="hint">(optional)</span></label>
+      <input type="file" name="video" accept="video/*">
     </div>
     <div class="form-group">
-      <label>Transcript (optional)</label>
-      <input type="file" name="transcript" accept=".txt,.md" onchange="previewFiles('m2')">
+      <label>Transcript <span class="hint">(optional)</span></label>
+      <input type="file" name="transcript" accept=".txt,.md">
     </div>
-    <div id="m2-preview"></div>
+    <div id="m2-preview" aria-live="polite"></div>
     <div class="form-group">
-      <label>Tester name <span style="color: var(--text-muted); font-size: 0.75rem;">(auto-filled from file if blank)</span></label>
-      <input type="text" name="tester_name" id="m2-tester-name" placeholder="Auto-detected from filename/transcript">
+      <label>Tester name <span class="hint">(auto-detected if blank)</span></label>
+      <input type="text" name="tester_name" id="m2-tester-name" placeholder="Auto-detected from filename">
     </div>
     <button type="submit" class="btn btn-primary">
-      Analyze M2
-      <span class="htmx-indicator"><span class="spinner"></span></span>
+      Analyze M2 <span class="htmx-indicator"><span class="spinner"></span></span>
     </button>
   </form>
 </div>
 
-<!-- M3 Form -->
-<div id="tab-m3" class="card" style="display:none;">
+<!-- M3 -->
+<div id="tab-m3" role="tabpanel" aria-labelledby="btn-m3" class="card" style="display:none;">
   <h2>M3: Proof-of-Value Comparison</h2>
-  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload both videos, the written comparison, and the task proposal.</p>
+  <p class="text-sm text-muted mb-md">Upload both videos, the written comparison, and the task proposal.</p>
   <form id="m3-form" hx-post="/analyze/m3" hx-target="#result-area" hx-encoding="multipart/form-data">
     <div class="grid-2">
       <div class="form-group">
-        <label>Video WITHOUT RubberDuck (required)</label>
-        <input type="file" name="video_without" accept="video/*" required onchange="previewFiles('m3')">
+        <label>Video WITHOUT RubberDuck <span class="hint">(required)</span></label>
+        <input type="file" name="video_without" accept="video/*" required>
       </div>
       <div class="form-group">
-        <label>Video WITH RubberDuck (required)</label>
-        <input type="file" name="video_with" accept="video/*">
+        <label>Video WITH RubberDuck <span class="hint">(required)</span></label>
+        <input type="file" name="video_with" accept="video/*" required>
       </div>
     </div>
     <div class="grid-2">
       <div class="form-group">
-        <label>Written comparison (required)</label>
+        <label>Written comparison <span class="hint">(required)</span></label>
         <input type="file" name="comparison" accept=".txt,.md" required onchange="previewFiles('m3')">
       </div>
       <div class="form-group">
-        <label>Task proposal (required)</label>
+        <label>Task proposal <span class="hint">(required)</span></label>
         <input type="file" name="proposal" accept=".txt,.md" required>
       </div>
     </div>
-    <div id="m3-preview"></div>
+    <div id="m3-preview" aria-live="polite"></div>
     <div class="form-group">
-      <label>Tester name <span style="color: var(--text-muted); font-size: 0.75rem;">(auto-filled from file if blank)</span></label>
+      <label>Tester name <span class="hint">(auto-detected if blank)</span></label>
       <input type="text" name="tester_name" id="m3-tester-name" placeholder="Auto-detected from filename">
     </div>
     <button type="submit" class="btn btn-primary">
-      Analyze M3
-      <span class="htmx-indicator"><span class="spinner"></span></span>
+      Analyze M3 <span class="htmx-indicator"><span class="spinner"></span></span>
     </button>
   </form>
 </div>
 
-<div id="result-area" style="margin-top: 1.5rem;"></div>
+<div id="result-area" class="mt-lg" aria-live="polite"></div>
 
 <script>
 function showTab(id) {
-  document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('[role="tabpanel"]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('[role="tab"]').forEach(el => { el.classList.remove('active'); el.setAttribute('aria-selected', 'false'); });
   document.getElementById('tab-' + id).style.display = 'block';
-  event.target.classList.add('active');
+  const btn = document.getElementById('btn-' + id);
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
 }
+
+// Arrow key navigation for tabs
+document.querySelector('[role="tablist"]').addEventListener('keydown', function(e) {
+  const tabs = Array.from(this.querySelectorAll('[role="tab"]'));
+  const idx = tabs.indexOf(document.activeElement);
+  if (e.key === 'ArrowRight' && idx < tabs.length - 1) { tabs[idx + 1].focus(); tabs[idx + 1].click(); }
+  if (e.key === 'ArrowLeft' && idx > 0) { tabs[idx - 1].focus(); tabs[idx - 1].click(); }
+});
 
 function previewFiles(milestone) {
   const form = document.getElementById(milestone + '-form');
   const previewDiv = document.getElementById(milestone + '-preview');
   const nameInput = document.getElementById(milestone + '-tester-name');
-
-  // Build FormData from the file inputs only
   const fd = new FormData();
-  const fileInputs = form.querySelectorAll('input[type="file"]');
   let hasFiles = false;
-  fileInputs.forEach(input => {
-    if (input.files.length > 0) {
-      fd.append(input.name, input.files[0]);
-      hasFiles = true;
-    }
+  form.querySelectorAll('input[type="file"]').forEach(input => {
+    if (input.files.length > 0) { fd.append(input.name, input.files[0]); hasFiles = true; }
   });
-
   if (!hasFiles) return;
-
-  // Show loading
-  previewDiv.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;"><span class="spinner"></span> Extracting metadata...</div>';
-
+  previewDiv.innerHTML = '<div class="text-sm text-muted"><span class="spinner"></span> Extracting metadata...</div>';
   fetch('/analyze/preview', { method: 'POST', body: fd })
     .then(r => r.text())
     .then(html => {
       previewDiv.innerHTML = html;
-      // Auto-fill tester name if the field is empty
       const metaName = previewDiv.querySelector('[data-tester-name]');
-      if (metaName && !nameInput.value) {
-        nameInput.value = metaName.dataset.testerName;
-      }
+      if (metaName && !nameInput.value) nameInput.value = metaName.dataset.testerName;
     })
-    .catch(() => {
-      previewDiv.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">Could not extract metadata.</div>';
-    });
+    .catch(() => { previewDiv.innerHTML = ''; });
 }
 </script>
 {% endblock %}

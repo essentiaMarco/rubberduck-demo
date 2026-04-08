@@ -1,63 +1,154 @@
 {% extends "base.html" %}
 {% block title %}{{ session.tester.name or 'Session' }} - RubberDuck Analyzer{% endblock %}
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="/sessions/">Sessions</a>
+  <span class="sep">/</span>
+  <span>{{ session.tester.name or session_id }}</span>
+</div>
+{% endblock %}
 {% block content %}
-<h1 style="margin-bottom: 0.5rem;">{{ session.tester.name or 'Unknown Tester' }}</h1>
-<p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-  {{ session.tester.date or '' }} | {{ session.milestone or 'M1' }} |
-  {{ session.tester.ide or '' }} |
-  {{ session.tester.codebase.name or '' }} ({{ session.tester.codebase.language or 'Python' }})
-</p>
-
-<!-- Session Stats -->
-<div class="stats">
-  <div class="stat">
-    <div class="stat-value">{{ session.observations.trust.trust_score or '-' }}</div>
-    <div class="stat-label">Trust Score</div>
+<div class="page-header">
+  <div>
+    <h1>{{ session.tester.name or 'Unknown Tester' }}</h1>
+    <div class="text-sm text-muted mt-sm" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <span>{{ session.tester.date or '' }}</span>
+      <span class="badge badge-{{ (session.milestone or 'M1')|lower }}">{{ session.milestone or 'M1' }}</span>
+      {% if session.tester.ide %}<span>{{ session.tester.ide }}</span>{% endif %}
+      {% if session.tester.codebase.name %}<span>{{ session.tester.codebase.name }} ({{ session.tester.codebase.language or 'Python' }})</span>{% endif %}
+      {% if session.tester.codebase.type %}<span class="badge badge-info">{{ session.tester.codebase.type }}</span>{% endif %}
+    </div>
   </div>
-  <div class="stat">
-    <div class="stat-value">{{ session.observations.prompting.prompt_independence or '-' }}</div>
-    <div class="stat-label">Prompt Independence</div>
-  </div>
-  <div class="stat">
-    <div class="stat-value">{{ session.observations.output_review.review_depth or '-' }}</div>
-    <div class="stat-label">Review Depth</div>
-  </div>
-  <div class="stat">
-    {% if session.m3_candidacy %}
-    <div class="stat-value"><span class="badge badge-{{ session.m3_candidacy.rating }}">{{ session.m3_candidacy.rating }}</span></div>
-    {% else %}
-    <div class="stat-value">-</div>
-    {% endif %}
-    <div class="stat-label">M3 Candidacy</div>
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="/sessions/{{ session_id }}/json" class="btn btn-secondary btn-sm">Download JSON</a>
+    <button class="btn btn-danger btn-sm"
+      hx-delete="/sessions/{{ session_id }}" hx-confirm="Delete this session?"
+      hx-target="body">Delete</button>
   </div>
 </div>
 
+<!-- Key Metrics -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">{{ session.observations.trust.trust_score or '-' }}</div>
+    <div class="stat-label">Trust Score <span class="tooltip" data-tip="0-10 scale. Higher = more trust in tool output"><span class="tooltip-icon">?</span></span></div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ session.observations.prompting.prompt_independence or '-' }}</div>
+    <div class="stat-label">Prompt Independence <span class="tooltip" data-tip="1-5 scale. 5 = wrote own prompts independently"><span class="tooltip-icon">?</span></span></div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ session.observations.output_review.review_depth or '-' }}</div>
+    <div class="stat-label">Review Depth <span class="tooltip" data-tip="1-5 scale. 5 = verified output line by line"><span class="tooltip-icon">?</span></span></div>
+  </div>
+  <div class="stat">
+    {% set m3 = session.m3_candidacy %}
+    {% if m3 and m3.rating %}
+    <div class="stat-value"><span class="badge badge-{{ m3.rating }}" style="font-size: 1rem; padding: 0.25rem 0.75rem;">{{ m3.rating }}</span></div>
+    {% else %}
+    <div class="stat-value">-</div>
+    {% endif %}
+    <div class="stat-label">M3 Candidacy <span class="tooltip" data-tip="yes = strong candidate, maybe = mixed signals, no = not suitable"><span class="tooltip-icon">?</span></span></div>
+  </div>
+</div>
+
+<!-- Trust Trajectory -->
+{% set trust = session.observations.trust %}
+{% if trust and trust.trust_trajectory %}
+<div class="card mb-md">
+  <h2>Trust Trajectory</h2>
+  {% for moment in trust.trust_trajectory %}
+  <div class="trust-moment">
+    <span class="trust-arrow {% if moment.direction == 'increased' %}trust-up{% else %}trust-down{% endif %}">
+      {% if moment.direction == 'increased' %}&#9650;{% else %}&#9660;{% endif %}
+    </span>
+    <span>{{ moment.moment or moment.trigger }}</span>
+    {% if moment.utterance_index %}<span class="text-xs text-muted">[#{{ moment.utterance_index }}]</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% elif trust and trust.trust_moments %}
+<div class="card mb-md">
+  <h2>Trust Trajectory</h2>
+  {% for moment in trust.trust_moments %}
+  <div class="trust-moment">
+    <span class="trust-arrow {% if moment.direction == 'increased' %}trust-up{% else %}trust-down{% endif %}">
+      {% if moment.direction == 'increased' %}&#9650;{% else %}&#9660;{% endif %}
+    </span>
+    <span>{{ moment.trigger }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- Observations -->
-<h2 style="margin-bottom: 1rem;">Observations</h2>
+<h2 class="mb-md">Observations</h2>
 <div class="obs-grid">
   {% for area_name, area in session.observations.items() %}
-  <div class="card">
-    <h3>{{ area_name | replace('_', ' ') | title }}</h3>
-    {% if area is mapping %}
+  <div class="obs-card {% if area.status == 'insufficient_data' %}has-error{% endif %}">
+    <h3>{{ area_name | replace('_', ' ') }}</h3>
+
+    {% if area.status == 'insufficient_data' %}
+    <div class="text-sm text-muted">
+      <span class="badge badge-failed">Insufficient Data</span>
+      <p class="mt-sm">{{ area.reason }}</p>
+    </div>
+    {% elif area is mapping %}
+
+    {# Summary if available #}
+    {% if area.summary %}
+    <p class="text-sm mb-sm">{{ area.summary }}</p>
+    {% endif %}
+
+    {# Key metrics for this area #}
+    <div class="meta-grid mb-sm">
       {% for key, value in area.items() %}
-        {% if key != 'verbatim_quotes' %}
-        <div style="margin-bottom: 0.4rem;">
-          <span style="color: var(--text-muted); font-size: 0.8rem;">{{ key | replace('_', ' ') }}:</span>
-          {% if value is iterable and value is not string %}
-            <span style="font-size: 0.85rem;">{{ value | length }} items</span>
-          {% else %}
-            <span style="font-size: 0.85rem;">{{ value }}</span>
-          {% endif %}
+        {% if key not in ['verbatim_quotes', 'evidence', 'summary', 'trust_trajectory', 'trust_moments', 'blockers', 'feature_requests', 'complaints', 'comparisons_to_competitors', 'positive_signals', 'identified_errors', 'identified_correct', 'skipped_sections', 'projected_limitations'] and value is not none %}
+        <div class="meta-item">
+          <label>{{ key | replace('_', ' ') }}</label>
+          <div class="value">
+            {% if value is sameas true %}<span class="badge badge-completed">Yes</span>
+            {% elif value is sameas false %}<span class="badge badge-failed">No</span>
+            {% elif value is iterable and value is not string %}{{ value | length }} items
+            {% else %}{{ value }}{% endif %}
+          </div>
         </div>
         {% endif %}
       {% endfor %}
-      {% if area.verbatim_quotes %}
-      <div style="margin-top: 0.75rem;">
-        {% for q in area.verbatim_quotes[:3] %}
-        <div class="quote">{{ q }}</div>
-        {% endfor %}
+    </div>
+
+    {# Evidence items (new format) #}
+    {% if area.evidence %}
+    <div class="mt-sm">
+      {% for ev in area.evidence[:5] %}
+      <div class="evidence-item">
+        <div class="evidence-insight">{{ ev.insight }}</div>
+        {% if ev.supporting_quote %}<div class="evidence-quote">"{{ ev.supporting_quote }}"</div>{% endif %}
+        <div class="evidence-meta">
+          {% if ev.speaker %}{{ ev.speaker }}{% endif %}
+          {% if ev.utterance_index %} #{{ ev.utterance_index }}{% endif %}
+          {% if ev.phase %} &middot; {{ ev.phase }}{% endif %}
+        </div>
       </div>
+      {% endfor %}
+      {% if area.evidence | length > 5 %}
+      <div class="text-xs text-muted mt-sm">+ {{ area.evidence | length - 5 }} more evidence items</div>
       {% endif %}
+    </div>
+    {% endif %}
+
+    {# Legacy verbatim quotes (old format) #}
+    {% if area.verbatim_quotes and not area.evidence %}
+    <div class="mt-sm">
+      {% for q in area.verbatim_quotes[:3] %}
+      <div class="quote">{{ q }}</div>
+      {% endfor %}
+      {% if area.verbatim_quotes | length > 3 %}
+      <div class="text-xs text-muted mt-sm">+ {{ area.verbatim_quotes | length - 3 }} more quotes</div>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% endif %}
   </div>
   {% endfor %}
@@ -65,42 +156,74 @@
 
 <!-- Facilitator Compliance -->
 {% if session.facilitator_compliance %}
-<div class="card" style="margin-top: 1.5rem;">
+<div class="card mt-lg">
   <h2>Facilitator Compliance</h2>
-  <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 0.75rem;">
+  {% if session.facilitator_compliance.summary %}
+  <p class="text-sm mb-md">{{ session.facilitator_compliance.summary }}</p>
+  {% endif %}
+  <div class="meta-grid">
     {% for key, value in session.facilitator_compliance.items() %}
-    <div>
-      <span style="color: var(--text-muted); font-size: 0.8rem;">{{ key | replace('_', ' ') }}:</span>
-      {% if key in ['explained_tool_before_use', 'coached_prompts'] %}
-        {# These are VIOLATIONS when true — invert the color #}
-        {% if value == true %}
-          <span class="badge badge-failed">Yes (violation)</span>
-        {% elif value == false %}
-          <span class="badge badge-completed">No</span>
-        {% else %}
-          <span style="font-size: 0.85rem;">{{ value }}</span>
-        {% endif %}
-      {% elif value == true %}
-        <span class="badge badge-completed">Yes</span>
-      {% elif value == false %}
-        <span class="badge badge-failed">No</span>
-      {% else %}
-        <span style="font-size: 0.85rem;">{{ value }}</span>
+      {% if key not in ['violations', 'summary'] %}
+      <div class="meta-item">
+        <label>{{ key | replace('_', ' ') }}</label>
+        <div class="value">
+          {% if key in ['explained_tool_before_use', 'coached_prompts', 'guided_too_much'] %}
+            {% if value == true %}<span class="badge badge-failed">Yes (violation)</span>
+            {% elif value == false %}<span class="badge badge-completed">No</span>
+            {% else %}{{ value }}{% endif %}
+          {% elif value == true %}<span class="badge badge-completed">Yes</span>
+          {% elif value == false %}<span class="badge badge-failed">No</span>
+          {% else %}{{ value }}{% endif %}
+        </div>
+      </div>
       {% endif %}
+    {% endfor %}
+  </div>
+  {% if session.facilitator_compliance.violations %}
+  <div class="mt-md">
+    <h3 class="mb-sm">Violations</h3>
+    {% for v in session.facilitator_compliance.violations %}
+    <div class="evidence-item" style="border-left-color: var(--error);">
+      <div class="evidence-insight">{{ v.description }}</div>
+      {% if v.impact %}<div class="evidence-quote">Impact: {{ v.impact }}</div>{% endif %}
+      <div class="evidence-meta">{{ v.type }}{% if v.utterance_index %} &middot; #{{ v.utterance_index }}{% endif %}</div>
     </div>
     {% endfor %}
   </div>
+  {% endif %}
 </div>
 {% endif %}
 
-<div style="margin-top: 1.5rem;">
-  <a href="/sessions/{{ session_id }}/json" class="btn btn-secondary">Download JSON</a>
-  <a href="/sessions/" class="btn btn-secondary" style="margin-left: 0.5rem;">Back to Sessions</a>
-  <button class="btn btn-secondary" style="margin-left: 0.5rem; background: var(--error); color: white;"
-    hx-delete="/sessions/{{ session_id }}"
-    hx-confirm="Delete this session? This cannot be undone."
-    hx-target="body"
-    hx-swap="innerHTML"
-  >Delete Session</button>
+<!-- M3 Candidacy Detail -->
+{% if session.m3_candidacy and session.m3_candidacy.summary %}
+<div class="card mt-md">
+  <h2>M3 Candidacy Assessment</h2>
+  <p class="text-sm mb-sm">{{ session.m3_candidacy.summary }}</p>
+  {% if session.m3_candidacy.recommended_m3_task %}
+  <div class="mt-sm"><strong class="text-sm">Recommended task:</strong> <span class="text-sm">{{ session.m3_candidacy.recommended_m3_task }}</span></div>
+  {% endif %}
+  {% if session.m3_candidacy.concerns %}
+  <div class="mt-sm">
+    <strong class="text-sm text-muted">Concerns:</strong>
+    <ul style="margin-top: 0.25rem; padding-left: 1.25rem;">
+      {% for c in session.m3_candidacy.concerns %}<li class="text-sm">{{ c }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
 </div>
+{% endif %}
+
+<!-- Video Conflicts -->
+{% if session.video_conflicts %}
+<div class="card mt-md" style="border-left: 3px solid var(--warning);">
+  <h2>Video/Transcript Conflicts</h2>
+  {% for c in session.video_conflicts %}
+  <div class="evidence-item" style="border-left-color: var(--warning);">
+    <div class="evidence-insight">{{ c.conflict }}</div>
+    <div class="evidence-quote">{{ c.recommendation }}</div>
+    <div class="evidence-meta">{{ c.area }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}
