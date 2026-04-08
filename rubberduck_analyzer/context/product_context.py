@@ -39,7 +39,9 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
 
 def _read_file(path: str | Path) -> str:
     """Read a file as text. For PDFs, extracts text if possible."""
-    path = Path(path)
+    path = Path(path).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"File not found: {path}")
     if path.suffix.lower() == ".pdf":
         # Try pdfminer.six if available
         try:
@@ -47,10 +49,10 @@ def _read_file(path: str | Path) -> str:
             return extract_text(str(path))
         except ImportError:
             pass
-        # Fallback: try subprocess with pdftotext
+        # Fallback: try subprocess with pdftotext (path resolved above)
         import subprocess
         result = subprocess.run(
-            ["pdftotext", str(path), "-"],
+            ["pdftotext", "--", str(path), "-"],
             capture_output=True,
             text=True,
         )

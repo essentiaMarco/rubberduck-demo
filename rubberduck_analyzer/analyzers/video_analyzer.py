@@ -40,10 +40,13 @@ class VideoAnalysis:
 
 def get_video_duration(video_path: str | Path) -> float:
     """Get video duration in seconds using ffprobe."""
+    video_path = Path(video_path).resolve()
+    if not video_path.is_file():
+        return 0.0
     result = subprocess.run(
         [
             "ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", str(video_path),
+            "-of", "default=noprint_wrappers=1:nokey=1", "--", str(video_path),
         ],
         capture_output=True,
         text=True,
@@ -60,7 +63,7 @@ def extract_frames(
     interval: int = FRAME_INTERVAL_SECONDS,
 ) -> list[Frame]:
     """Extract frames from a video at regular intervals using ffmpeg."""
-    video_path = Path(video_path)
+    video_path = Path(video_path).resolve()
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

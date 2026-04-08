@@ -9,27 +9,10 @@ from pathlib import Path
 
 import anthropic
 
+from rubberduck_analyzer.analyzers.claude_client import call_claude as _call_claude
 from rubberduck_analyzer.analyzers.transcript_analyzer import normalize_text
 from rubberduck_analyzer.analyzers.video_analyzer import analyze_video, video_analysis_to_dict
 from rubberduck_analyzer.context.use_case_registry import detect_use_cases
-
-MODEL = "claude-sonnet-4-6"
-
-
-def _call_claude(client: anthropic.Anthropic, system: str, user: str) -> dict:
-    """Send a structured extraction prompt to Claude and parse the JSON response."""
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=4096,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
-    text = response.content[0].text
-    if "```json" in text:
-        text = text.split("```json", 1)[1].split("```", 1)[0]
-    elif "```" in text:
-        text = text.split("```", 1)[1].split("```", 1)[0]
-    return json.loads(text.strip())
 
 
 _SYSTEM = (

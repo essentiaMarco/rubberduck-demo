@@ -14,26 +14,8 @@ from rubberduck_analyzer.analyzers.transcript_analyzer import (
     parse_transcript,
     transcript_to_text,
 )
+from rubberduck_analyzer.analyzers.claude_client import call_claude as _call_claude
 from rubberduck_analyzer.context.use_case_registry import detect_use_cases
-
-MODEL = "claude-sonnet-4-6"
-
-
-def _call_claude(client: anthropic.Anthropic, system: str, user: str) -> dict:
-    """Send a structured extraction prompt to Claude and parse the JSON response."""
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=4096,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
-    text = response.content[0].text
-    # Extract JSON from response — handle markdown code blocks
-    if "```json" in text:
-        text = text.split("```json", 1)[1].split("```", 1)[0]
-    elif "```" in text:
-        text = text.split("```", 1)[1].split("```", 1)[0]
-    return json.loads(text.strip())
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +314,14 @@ def analyze_m1(
         "product_feedback": product_feedback,
     }
 
+    # Validation rule 1: every area must be scored or marked insufficient
+    for area_name, area_data in observations.items():
+        if isinstance(area_data, dict) and area_data.get("error"):
+            observations[area_name] = {
+                "status": "insufficient_data",
+                "reason": area_data["error"],
+            }
+
     # Step 4: Detect use cases from transcript
     detected_ucs = detect_use_cases(text)
 
@@ -348,6 +338,7 @@ def analyze_m1(
 
     # Assemble session JSON
     session = {
+        "milestone": "M1",
         "tester": {
             "name": metadata.get("tester_name"),
             "date": metadata.get("date") or str(date.today()),
