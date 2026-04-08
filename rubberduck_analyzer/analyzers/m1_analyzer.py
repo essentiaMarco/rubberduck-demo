@@ -316,20 +316,27 @@ def analyze_m1(
     output_path: str | Path | None = None,
     tester_name: str | None = None,
     facilitator_is_first: bool = True,
+    on_progress: callable | None = None,
 ) -> dict:
     """Run the full M1 analysis pipeline.
 
     Produces evidence-anchored observations with transcript location references.
+    on_progress: optional callback(step_num, total_steps, description) for UI updates.
     """
+    def _progress(step: int, total: int, desc: str):
+        print(desc, file=sys.stderr)
+        if on_progress:
+            on_progress(step, total, desc)
+
     client = anthropic.Anthropic()
 
     # Step 1: Parse transcript
-    print("Parsing transcript...", file=sys.stderr)
+    _progress(1, 5, "Step 1/5: Parsing transcript...")
     transcript = parse_transcript(transcript_path, facilitator_is_first)
     indexed_text = transcript_to_indexed_text(transcript)
 
     # Step 2: Extract session metadata
-    print("Extracting session metadata...", file=sys.stderr)
+    _progress(2, 5, "Step 2/5: Extracting session metadata...")
     metadata = _extract_session_metadata(client, indexed_text, transcript)
     if tester_name:
         metadata["tester_name"] = tester_name
@@ -337,10 +344,10 @@ def analyze_m1(
         metadata["tester_name"] = transcript.tester_name
 
     # Step 3: Extract observations (6 areas in 2 batched calls)
-    print("Extracting observations batch 1 (installation, prompting, output review)...", file=sys.stderr)
+    _progress(3, 5, "Step 3/5: Analyzing observations (installation, prompting, output review)...")
     batch_1 = _extract_observations_batch_1(client, indexed_text)
 
-    print("Extracting observations batch 2 (LLM biases, trust, product feedback)...", file=sys.stderr)
+    _progress(3, 5, "Step 3/5: Analyzing observations (biases, trust, feedback)...")
     batch_2 = _extract_observations_batch_2(client, indexed_text)
 
     observations = {
@@ -360,15 +367,14 @@ def analyze_m1(
                 "reason": area_data["error"],
             }
 
-    # Step 4: Detect use cases
+    # Step 4: Detect use cases + facilitator compliance
     detected_ucs = detect_use_cases(transcript_to_text(transcript))
 
-    # Step 5: Facilitator compliance
-    print("Checking facilitator compliance...", file=sys.stderr)
+    _progress(4, 5, "Step 4/5: Checking facilitator compliance...")
     compliance = _extract_facilitator_compliance(client, indexed_text)
 
-    # Step 6: M3 candidacy
-    print("Assessing M3 candidacy...", file=sys.stderr)
+    # Step 5: M3 candidacy
+    _progress(5, 5, "Step 5/5: Assessing M3 candidacy...")
     m3_candidacy = _assess_m3_candidacy(client, indexed_text, observations)
 
     # Step 7: Phase durations

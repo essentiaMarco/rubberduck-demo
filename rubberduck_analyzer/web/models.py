@@ -21,6 +21,7 @@ def _get_db() -> sqlite3.Connection:
             milestone TEXT NOT NULL,
             tester_name TEXT,
             status TEXT NOT NULL DEFAULT 'pending',
+            progress TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             result_path TEXT,
@@ -29,6 +30,12 @@ def _get_db() -> sqlite3.Connection:
         )
     """)
     conn.commit()
+    # Migration: add progress column if missing
+    try:
+        conn.execute("SELECT progress FROM jobs LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.execute("ALTER TABLE jobs ADD COLUMN progress TEXT")
+        conn.commit()
     return conn
 
 
@@ -44,13 +51,19 @@ def create_job(job_id: str, milestone: str, tester_name: str | None = None, meta
     return {"id": job_id, "status": "pending", "milestone": milestone}
 
 
-def update_job(job_id: str, status: str, result_path: str | None = None, error: str | None = None):
+def update_job(job_id: str, status: str, result_path: str | None = None, error: str | None = None, progress: str | None = None):
     conn = _get_db()
     now = datetime.utcnow().isoformat()
-    conn.execute(
-        "UPDATE jobs SET status = ?, updated_at = ?, result_path = ?, error = ? WHERE id = ?",
-        (status, now, result_path, error, job_id),
-    )
+    if progress is not None:
+        conn.execute(
+            "UPDATE jobs SET status = ?, updated_at = ?, result_path = ?, error = ?, progress = ? WHERE id = ?",
+            (status, now, result_path, error, progress, job_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE jobs SET status = ?, updated_at = ?, result_path = ?, error = ? WHERE id = ?",
+            (status, now, result_path, error, job_id),
+        )
     conn.commit()
     conn.close()
 
