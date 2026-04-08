@@ -1,6 +1,30 @@
 <div class="card" style="border-color: var(--accent);">
   <h3>{{ milestone }} Analysis Submitted</h3>
   <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0;">Job ID: <code>{{ job_id }}</code></p>
+
+  {% if meta %}
+  <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.75rem; background: var(--bg); border-radius: var(--radius);">
+    {% if meta.tester_name %}
+    <div><span style="color: var(--text-muted); font-size: 0.7rem;">Tester</span><div style="font-size: 0.9rem; font-weight: 600;">{{ meta.tester_name }}</div></div>
+    {% endif %}
+    {% if meta.date %}
+    <div><span style="color: var(--text-muted); font-size: 0.7rem;">Date</span><div style="font-size: 0.9rem;">{{ meta.date }}</div></div>
+    {% endif %}
+    {% if meta.transcript and meta.transcript.utterance_count %}
+    <div><span style="color: var(--text-muted); font-size: 0.7rem;">Utterances</span><div style="font-size: 0.9rem;">{{ meta.transcript.utterance_count }}</div></div>
+    {% endif %}
+    {% if meta.transcript and meta.transcript.estimated_duration_minutes %}
+    <div><span style="color: var(--text-muted); font-size: 0.7rem;">Est. Duration</span><div style="font-size: 0.9rem;">{{ meta.transcript.estimated_duration_minutes }} min</div></div>
+    {% endif %}
+    {% if meta.video and meta.video.video_size_mb %}
+    <div><span style="color: var(--text-muted); font-size: 0.7rem;">Video</span><div style="font-size: 0.9rem;">{{ meta.video.video_size_mb }} MB</div></div>
+    {% endif %}
+    {% if meta.source_platform %}
+    <div><span style="color: var(--text-muted); font-size: 0.7rem;">Source</span><div style="font-size: 0.9rem;">{{ meta.source_platform }}</div></div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div
     hx-get="/jobs/{{ job_id }}"
     hx-trigger="load, every 3s"

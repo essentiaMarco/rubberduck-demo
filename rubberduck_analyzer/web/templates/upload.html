@@ -12,19 +12,20 @@
 <!-- M1 Form -->
 <div id="tab-m1" class="card">
   <h2>M1: Live Interview Analysis</h2>
-  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the interview transcript. Video is optional.</p>
-  <form hx-post="/analyze/m1" hx-target="#result-area" hx-encoding="multipart/form-data">
+  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the interview transcript. Video is optional. Metadata is auto-extracted from files.</p>
+  <form id="m1-form" hx-post="/analyze/m1" hx-target="#result-area" hx-encoding="multipart/form-data">
     <div class="form-group">
       <label>Transcript file (required)</label>
-      <input type="file" name="transcript" accept=".txt,.md" required>
+      <input type="file" name="transcript" accept=".txt,.md" required onchange="previewFiles('m1')">
     </div>
     <div class="form-group">
       <label>Video recording (optional)</label>
-      <input type="file" name="video" accept="video/*">
+      <input type="file" name="video" accept="video/*" onchange="previewFiles('m1')">
     </div>
+    <div id="m1-preview"></div>
     <div class="form-group">
-      <label>Tester name (optional)</label>
-      <input type="text" name="tester_name" placeholder="e.g. Samuel Tolossa">
+      <label>Tester name <span style="color: var(--text-muted); font-size: 0.75rem;">(auto-filled from file if blank)</span></label>
+      <input type="text" name="tester_name" id="m1-tester-name" placeholder="Auto-detected from filename/transcript">
     </div>
     <button type="submit" class="btn btn-primary">
       Analyze M1
@@ -37,22 +38,23 @@
 <div id="tab-m2" class="card" style="display:none;">
   <h2>M2: Independent Use Analysis</h2>
   <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload the 3-5 sentence written deliverable. Video and transcript are optional.</p>
-  <form hx-post="/analyze/m2" hx-target="#result-area" hx-encoding="multipart/form-data">
+  <form id="m2-form" hx-post="/analyze/m2" hx-target="#result-area" hx-encoding="multipart/form-data">
     <div class="form-group">
       <label>Written deliverable (required)</label>
-      <input type="file" name="written" accept=".txt,.md" required>
+      <input type="file" name="written" accept=".txt,.md" required onchange="previewFiles('m2')">
     </div>
     <div class="form-group">
       <label>Screen recording (optional)</label>
-      <input type="file" name="video" accept="video/*">
+      <input type="file" name="video" accept="video/*" onchange="previewFiles('m2')">
     </div>
     <div class="form-group">
       <label>Transcript (optional)</label>
-      <input type="file" name="transcript" accept=".txt,.md">
+      <input type="file" name="transcript" accept=".txt,.md" onchange="previewFiles('m2')">
     </div>
+    <div id="m2-preview"></div>
     <div class="form-group">
-      <label>Tester name</label>
-      <input type="text" name="tester_name" placeholder="e.g. Samuel Tolossa">
+      <label>Tester name <span style="color: var(--text-muted); font-size: 0.75rem;">(auto-filled from file if blank)</span></label>
+      <input type="text" name="tester_name" id="m2-tester-name" placeholder="Auto-detected from filename/transcript">
     </div>
     <button type="submit" class="btn btn-primary">
       Analyze M2
@@ -64,31 +66,32 @@
 <!-- M3 Form -->
 <div id="tab-m3" class="card" style="display:none;">
   <h2>M3: Proof-of-Value Comparison</h2>
-  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload both videos (with and without RubberDuck), the written comparison, and the task proposal.</p>
-  <form hx-post="/analyze/m3" hx-target="#result-area" hx-encoding="multipart/form-data">
+  <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">Upload both videos, the written comparison, and the task proposal.</p>
+  <form id="m3-form" hx-post="/analyze/m3" hx-target="#result-area" hx-encoding="multipart/form-data">
     <div class="grid-2">
       <div class="form-group">
         <label>Video WITHOUT RubberDuck (required)</label>
-        <input type="file" name="video_without" accept="video/*" required>
+        <input type="file" name="video_without" accept="video/*" required onchange="previewFiles('m3')">
       </div>
       <div class="form-group">
         <label>Video WITH RubberDuck (required)</label>
-        <input type="file" name="video_with" accept="video/*" required>
+        <input type="file" name="video_with" accept="video/*">
       </div>
     </div>
     <div class="grid-2">
       <div class="form-group">
         <label>Written comparison (required)</label>
-        <input type="file" name="comparison" accept=".txt,.md" required>
+        <input type="file" name="comparison" accept=".txt,.md" required onchange="previewFiles('m3')">
       </div>
       <div class="form-group">
         <label>Task proposal (required)</label>
         <input type="file" name="proposal" accept=".txt,.md" required>
       </div>
     </div>
+    <div id="m3-preview"></div>
     <div class="form-group">
-      <label>Tester name</label>
-      <input type="text" name="tester_name" placeholder="e.g. Samuel Tolossa">
+      <label>Tester name <span style="color: var(--text-muted); font-size: 0.75rem;">(auto-filled from file if blank)</span></label>
+      <input type="text" name="tester_name" id="m3-tester-name" placeholder="Auto-detected from filename">
     </div>
     <button type="submit" class="btn btn-primary">
       Analyze M3
@@ -105,6 +108,42 @@ function showTab(id) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + id).style.display = 'block';
   event.target.classList.add('active');
+}
+
+function previewFiles(milestone) {
+  const form = document.getElementById(milestone + '-form');
+  const previewDiv = document.getElementById(milestone + '-preview');
+  const nameInput = document.getElementById(milestone + '-tester-name');
+
+  // Build FormData from the file inputs only
+  const fd = new FormData();
+  const fileInputs = form.querySelectorAll('input[type="file"]');
+  let hasFiles = false;
+  fileInputs.forEach(input => {
+    if (input.files.length > 0) {
+      fd.append(input.name, input.files[0]);
+      hasFiles = true;
+    }
+  });
+
+  if (!hasFiles) return;
+
+  // Show loading
+  previewDiv.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;"><span class="spinner"></span> Extracting metadata...</div>';
+
+  fetch('/analyze/preview', { method: 'POST', body: fd })
+    .then(r => r.text())
+    .then(html => {
+      previewDiv.innerHTML = html;
+      // Auto-fill tester name if the field is empty
+      const metaName = previewDiv.querySelector('[data-tester-name]');
+      if (metaName && !nameInput.value) {
+        nameInput.value = metaName.dataset.testerName;
+      }
+    })
+    .catch(() => {
+      previewDiv.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">Could not extract metadata.</div>';
+    });
 }
 </script>
 {% endblock %}

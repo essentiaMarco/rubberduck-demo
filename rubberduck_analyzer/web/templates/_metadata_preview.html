@@ -1,0 +1,98 @@
+<div class="card" style="border-color: var(--accent); margin-top: 1rem;">
+  <h3 style="margin-bottom: 0.75rem;">Extracted Metadata</h3>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+
+    {% if meta.tester_name %}
+    <div data-tester-name="{{ meta.tester_name }}">
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Tester</span>
+      <div style="font-weight: 600;">{{ meta.tester_name }}</div>
+    </div>
+    {% endif %}
+
+    {% if meta.date %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Date</span>
+      <div>{{ meta.date }}</div>
+    </div>
+    {% endif %}
+
+    {% if meta.milestone_type %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Milestone</span>
+      <div><span class="badge badge-running">{{ meta.milestone_type }}</span></div>
+    </div>
+    {% endif %}
+
+    {% if meta.source_platform %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Source</span>
+      <div>{{ meta.source_platform }}</div>
+    </div>
+    {% endif %}
+
+    {% if meta.transcript %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Format</span>
+      <div>{{ meta.transcript.format }}</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Utterances</span>
+      <div>{{ meta.transcript.utterance_count }} ({{ meta.transcript.tester_turns or 0 }} tester / {{ meta.transcript.facilitator_turns or 0 }} facilitator)</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Est. Duration</span>
+      <div>{{ meta.transcript.estimated_duration_minutes }} min</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Words</span>
+      <div>{{ meta.transcript.word_count }}</div>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Phases Detected</span>
+      <div>
+        {% for phase in meta.transcript.phases_detected %}
+        <span class="badge badge-running" style="margin-right: 0.25rem;">{{ phase }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% if meta.transcript.tester_name %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Tester (from transcript)</span>
+      <div>{{ meta.transcript.tester_name }}</div>
+    </div>
+    {% endif %}
+    {% if meta.transcript.facilitator_name %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Facilitator</span>
+      <div>{{ meta.transcript.facilitator_name }}</div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if meta.video %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Video Duration</span>
+      <div>{{ meta.video.video_duration_minutes }} min</div>
+    </div>
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Video Size</span>
+      <div>{{ meta.video.video_size_mb }} MB</div>
+    </div>
+    {% endif %}
+
+    {% if meta.written %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.75rem;">Written Deliverable</span>
+      <div>{{ meta.written.word_count }} words, {{ meta.written.sentence_count }} sentences</div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {% if meta.transcript and meta.transcript.first_tester_utterance %}
+  <div style="margin-top: 0.75rem;">
+    <span style="color: var(--text-muted); font-size: 0.75rem;">First Tester Utterance</span>
+    <div class="quote">{{ meta.transcript.first_tester_utterance }}</div>
+  </div>
+  {% endif %}
+</div>
