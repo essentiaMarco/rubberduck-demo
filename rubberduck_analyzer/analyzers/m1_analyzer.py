@@ -1,4 +1,4 @@
-"""M1 session analysis — 6 observation areas extracted via Claude API."""
+"""M1 session analysis — evidence-anchored observations via Claude API."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import anthropic
 from rubberduck_analyzer.analyzers.transcript_analyzer import (
     Transcript,
     parse_transcript,
+    transcript_to_indexed_text,
     transcript_to_text,
 )
 from rubberduck_analyzer.analyzers.claude_client import call_claude as _call_claude
@@ -19,250 +20,162 @@ from rubberduck_analyzer.context.use_case_registry import detect_use_cases
 
 
 # ---------------------------------------------------------------------------
-# Observation extraction prompts
+# System prompt — shared across all extraction calls
 # ---------------------------------------------------------------------------
 
-_SYSTEM_PREFIX = (
-    "You are an expert qualitative researcher analyzing a user testing interview "
-    "for RubberDuck, an AI-powered code analysis tool that uses MCP integration. "
-    "Extract structured observations from the transcript. Return ONLY valid JSON "
-    "matching the requested schema. Verbatim quotes must be exact text from the "
-    "transcript, not paraphrased."
+_SYSTEM = (
+    "You are a senior UX researcher analyzing a user testing interview for RubberDuck, "
+    "an AI-powered code analysis tool using MCP integration with IDEs.\n\n"
+    "EVIDENCE FORMAT — for every observation, provide an 'evidence' array:\n"
+    "Each evidence item MUST have:\n"
+    "- 'insight': your analytical finding paraphrased in your own words (NOT a raw quote)\n"
+    "- 'supporting_quote': the exact words from the transcript that support this insight\n"
+    "- 'utterance_index': the [N] number from the transcript line\n"
+    "- 'speaker': 'facilitator' or 'tester'\n"
+    "- 'phase': the phase tag from the transcript line (setup/baseline/exploration/debrief/handoff)\n\n"
+    "ANALYSIS DEPTH — for every observation area:\n"
+    "- Explain the ROOT CAUSE (WHY something happened, not just WHAT)\n"
+    "- Assess SEVERITY (how much this affects the product's success)\n"
+    "- Note CROSS-CONNECTIONS to other observation areas when relevant\n\n"
+    "Return ONLY valid JSON matching the requested schema."
 )
 
 
-def _extract_installation(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract installation/setup observations."""
-    schema = """{
-  "setup_method": "pre-call | on-call | failed",
-  "setup_duration_minutes": <number or null>,
-  "blockers": [{"description": "<string>", "category": "token_confusion | mcp_config | ide_specific | github_app | indexing | other"}],
-  "facilitator_intervention_required": <boolean>,
-  "verbatim_quotes": ["<exact quote from transcript>"]
-}"""
-    return _call_claude(
-        client,
-        _SYSTEM_PREFIX,
-        f"Analyze the following interview transcript for INSTALLATION AND SETUP observations.\n\n"
-        f"Look for: setup friction, where they got stuck, how long it took, token confusion "
-        f"(API key vs MCP token), MCP configuration errors, IDE-specific issues, GitHub App "
-        f"installation issues, repository indexing failures.\n\n"
-        f"Return JSON matching this schema:\n{schema}\n\n"
-        f"If setup was not discussed or data is insufficient, set setup_method to 'pre-call' "
-        f"and note the gap in a quote.\n\n"
-        f"TRANSCRIPT:\n{text}",
-    )
+# ---------------------------------------------------------------------------
+# Evidence schema fragment (reused in all prompts)
+# ---------------------------------------------------------------------------
 
-
-def _extract_prompting(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract prompting behavior observations."""
-    schema = """{
-  "prompt_independence": <1-5, where 1=needed full guidance and 5=wrote own prompts>,
-  "prompt_style": "copied_from_website | natural_language | tool_specific | needed_help",
-  "mentions_tool_names": <boolean — did they use call_chain, trace_variable, etc.>,
-  "mcp_tool_usage": "used_correctly | ide_ignored_mcp | used_grep_instead | not_reached",
-  "verbatim_quotes": ["<exact quote showing how they framed prompts>"]
-}"""
-    return _call_claude(
-        client,
-        _SYSTEM_PREFIX,
-        f"Analyze the following interview transcript for PROMPTING BEHAVIOR observations.\n\n"
-        f"Look for: did they write their own prompts or need guidance, did they use RubberDuck "
-        f"tool names (call_chain, trace_variable, find_consumers, etc.) or plain English, "
-        f"did the IDE actually call MCP tools or fall back to grep/cat.\n\n"
-        f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
-    )
-
-
-def _extract_output_review(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract output review behavior observations."""
-    schema = """{
-  "review_depth": <1-5, where 1=glanced and 5=verified line by line>,
-  "verified_against_knowledge": <boolean — did they check output against what they know>,
-  "identified_errors": ["<description of output errors they caught>"],
-  "identified_correct": ["<description of output they confirmed as accurate>"],
-  "skipped_sections": ["<what parts of output they ignored>"],
-  "verbatim_quotes": ["<exact reactions to output>"]
-}"""
-    return _call_claude(
-        client,
-        _SYSTEM_PREFIX,
-        f"Analyze the following interview transcript for OUTPUT REVIEW observations.\n\n"
-        f"Look for: did they read output carefully, verify against what they know, skim or "
-        f"ignore parts, catch errors, confirm accuracy.\n\n"
-        f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
-    )
-
-
-def _extract_llm_biases(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract LLM bias observations."""
-    schema = """{
-  "pre_existing_bias": "<text describing what they said about AI tools before using RubberDuck>",
-  "bias_confirmed": <boolean — did their bias show up during use>,
-  "bias_challenged": <boolean — did RubberDuck change their assumption>,
-  "projected_limitations": ["<limitations they assumed from other tools>"],
-  "verbatim_quotes": ["<statements showing bias or bias reversal>"]
-}"""
-    return _call_claude(
-        client,
-        _SYSTEM_PREFIX,
-        f"Analyze the following interview transcript for LLM BIAS observations.\n\n"
-        f"Look for: do they assume things are impossible, distrust output because 'AI hallucinates', "
-        f"project limitations from other tools like Copilot/ChatGPT onto RubberDuck, or have "
-        f"their assumptions challenged by the results.\n\n"
-        f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
-    )
-
-
-def _extract_trust(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract trust observations."""
-    schema = """{
-  "trust_score": <float or null — if explicitly stated like '8.5 out of 10'>,
-  "trust_moments": [{"direction": "increased | decreased", "trigger": "<what caused the shift>"}],
-  "would_use_again": <boolean or null>,
-  "would_ship_based_on_output": <boolean or null>,
-  "comparison_to_other_tools": "<how they compared trust vs Copilot, ChatGPT, etc.>",
-  "verbatim_quotes": ["<trust-related statements>"]
-}"""
-    return _call_claude(
-        client,
-        _SYSTEM_PREFIX,
-        f"Analyze the following interview transcript for TRUST observations.\n\n"
-        f"Look for: how much they trust the output, what makes them believe or doubt results, "
-        f"explicit trust ratings, whether they'd use the tool again, whether they'd ship code "
-        f"based on its output.\n\n"
-        f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
-    )
-
-
-def _extract_product_feedback(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract product feedback observations."""
-    schema = """{
-  "feature_requests": [{"description": "<string>", "priority": "high | medium | low", "category": "<string>"}],
-  "complaints": [{"description": "<string>", "severity": "blocker | major | minor"}],
-  "comparisons_to_competitors": [{"competitor": "<name>", "feature": "<what they compared>", "verdict": "RD_better | competitor_better | tie"}],
-  "verbatim_quotes": ["<feedback statements>"]
-}"""
-    return _call_claude(
-        client,
-        _SYSTEM_PREFIX,
-        f"Analyze the following interview transcript for PRODUCT FEEDBACK observations.\n\n"
-        f"Look for: feature requests, complaints, suggestions about the product, comparisons "
-        f"to competitors (Copilot, CodeRabbit, Qodo, Cursor, Codex, etc.), what they wish "
-        f"the tool could do.\n\n"
-        f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
-    )
+_EVIDENCE_SCHEMA = """
+"evidence": [{
+  "insight": "<your analytical finding in your own words — NOT a raw quote>",
+  "supporting_quote": "<exact words from the transcript>",
+  "utterance_index": <the [N] number from the transcript>,
+  "speaker": "facilitator | tester",
+  "phase": "setup | baseline | exploration | debrief | handoff"
+}]
+"""
 
 
 # ---------------------------------------------------------------------------
-# Batched observation extraction (reduces 6 API calls to 2)
+# Batched observation extraction (2 calls for 6 areas)
 # ---------------------------------------------------------------------------
 
 
-def _extract_observations_batch_1(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract installation, prompting, and output review in a single API call."""
+def _extract_observations_batch_1(client: anthropic.Anthropic, indexed_text: str) -> dict:
+    """Extract installation, prompting, and output review with evidence chains."""
     schema = """{
   "installation": {
     "setup_method": "pre-call | on-call | failed",
     "setup_duration_minutes": <number or null>,
-    "blockers": [{"description": "<string>", "category": "token_confusion | mcp_config | ide_specific | github_app | indexing | other"}],
+    "blockers": [{"description": "<string>", "category": "token_confusion | mcp_config | ide_specific | github_app | indexing | other", "root_cause": "<WHY this blocker occurred>", "severity": "blocker | major | minor"}],
     "facilitator_intervention_required": <boolean>,
-    "verbatim_quotes": ["<exact quote from transcript>"]
+    "summary": "<2-3 sentence analytical summary of setup experience>",
+    """ + _EVIDENCE_SCHEMA + """
   },
   "prompting": {
-    "prompt_independence": <1-5>,
+    "prompt_independence": <1-5, where 1=needed full guidance and 5=wrote own prompts>,
     "prompt_style": "copied_from_website | natural_language | tool_specific | needed_help",
     "mentions_tool_names": <boolean>,
     "mcp_tool_usage": "used_correctly | ide_ignored_mcp | used_grep_instead | not_reached",
-    "verbatim_quotes": ["<exact quote>"]
+    "prompt_evolution": "<did their prompting improve over the session? describe the arc>",
+    "summary": "<2-3 sentence analytical summary>",
+    """ + _EVIDENCE_SCHEMA + """
   },
   "output_review": {
-    "review_depth": <1-5>,
+    "review_depth": <1-5, where 1=glanced and 5=verified line by line>,
     "verified_against_knowledge": <boolean>,
-    "identified_errors": ["<string>"],
-    "identified_correct": ["<string>"],
-    "skipped_sections": ["<string>"],
-    "verbatim_quotes": ["<exact quote>"]
+    "identified_errors": ["<description>"],
+    "identified_correct": ["<description>"],
+    "skipped_sections": ["<what they ignored and why>"],
+    "comprehension_level": "<did they understand what the output meant? high/medium/low>",
+    "summary": "<2-3 sentence analytical summary>",
+    """ + _EVIDENCE_SCHEMA + """
   }
 }"""
     return _call_claude(
         client,
-        _SYSTEM_PREFIX,
-        f"Analyze this interview transcript and extract THREE observation areas in a single JSON response.\n\n"
-        f"1. INSTALLATION: setup friction, blockers, token confusion, MCP config issues, IDE problems\n"
-        f"2. PROMPTING: did they write own prompts or need help, tool names vs plain English, MCP usage\n"
-        f"3. OUTPUT REVIEW: did they read carefully, verify against knowledge, catch errors, skip sections\n\n"
+        _SYSTEM,
+        f"Analyze this interview transcript and extract THREE observation areas.\n\n"
+        f"For each area, provide root-cause analysis (WHY, not just WHAT) and cite evidence "
+        f"using the utterance [N] indices from the transcript.\n\n"
+        f"1. INSTALLATION: setup friction, blockers with root causes, MCP config issues\n"
+        f"2. PROMPTING: independence level, style evolution over session, MCP tool usage\n"
+        f"3. OUTPUT REVIEW: depth of review, what they verified vs skipped, comprehension\n\n"
         f"Return JSON matching this schema:\n{schema}\n\n"
-        f"Verbatim quotes must be exact text from the transcript.\n\n"
-        f"TRANSCRIPT:\n{text}",
+        f"INDEXED TRANSCRIPT:\n{indexed_text}",
     )
 
 
-def _extract_observations_batch_2(client: anthropic.Anthropic, text: str) -> dict:
-    """Extract LLM biases, trust, and product feedback in a single API call."""
+def _extract_observations_batch_2(client: anthropic.Anthropic, indexed_text: str) -> dict:
+    """Extract LLM biases, trust, and product feedback with evidence chains."""
     schema = """{
   "llm_biases": {
-    "pre_existing_bias": "<text>",
+    "pre_existing_bias": "<analytical description of their AI tool assumptions>",
     "bias_confirmed": <boolean>,
     "bias_challenged": <boolean>,
-    "projected_limitations": ["<string>"],
-    "verbatim_quotes": ["<exact quote>"]
+    "projected_limitations": ["<limitation assumed from other tools>"],
+    "bias_trajectory": "<how did their bias change over the session?>",
+    "summary": "<2-3 sentence analytical summary>",
+    """ + _EVIDENCE_SCHEMA + """
   },
   "trust": {
-    "trust_score": <float or null>,
-    "trust_moments": [{"direction": "increased | decreased", "trigger": "<string>"}],
+    "trust_score": <float 0-10 scale. MUST be 0-10. Convert percentages: 82%=8.2. If they say 'I trust it' without a number, estimate with reasoning>,
+    "trust_score_reasoning": "<how you determined the score — direct quote or inference>",
+    "trust_trajectory": [{"moment": "<what happened>", "direction": "increased | decreased", "utterance_index": <N>}],
     "would_use_again": <boolean or null>,
     "would_ship_based_on_output": <boolean or null>,
-    "comparison_to_other_tools": "<text>",
-    "verbatim_quotes": ["<exact quote>"]
+    "comparison_to_other_tools": "<analytical comparison, not just a quote>",
+    "trust_drivers": "<what specifically builds trust in this tool for this tester>",
+    "trust_barriers": "<what specifically undermines trust>",
+    "summary": "<2-3 sentence analytical summary>",
+    """ + _EVIDENCE_SCHEMA + """
   },
   "product_feedback": {
-    "feature_requests": [{"description": "<string>", "priority": "high | medium | low", "category": "<string>"}],
-    "complaints": [{"description": "<string>", "severity": "blocker | major | minor"}],
-    "comparisons_to_competitors": [{"competitor": "<name>", "feature": "<string>", "verdict": "RD_better | competitor_better | tie"}],
-    "verbatim_quotes": ["<exact quote>"]
+    "feature_requests": [{"description": "<string>", "priority": "high | medium | low", "category": "<string>", "reasoning": "<why they want this>"}],
+    "complaints": [{"description": "<string>", "severity": "blocker | major | minor", "root_cause": "<underlying problem>"}],
+    "comparisons_to_competitors": [{"competitor": "<name>", "feature": "<what they compared>", "verdict": "RD_better | competitor_better | tie", "reasoning": "<why>"}],
+    "positive_signals": ["<things that worked well or impressed them>"],
+    "summary": "<2-3 sentence analytical summary>",
+    """ + _EVIDENCE_SCHEMA + """
   }
 }"""
     return _call_claude(
         client,
-        _SYSTEM_PREFIX,
-        f"Analyze this interview transcript and extract THREE observation areas in a single JSON response.\n\n"
-        f"1. LLM BIASES: pre-existing AI distrust, assumptions from other tools, bias confirmed or challenged\n"
-        f"2. TRUST: explicit trust ratings, trust-building/breaking moments, would they use again or ship based on output\n"
-        f"3. PRODUCT FEEDBACK: feature requests, complaints, competitor comparisons (Copilot, CodeRabbit, etc.)\n\n"
+        _SYSTEM,
+        f"Analyze this interview transcript and extract THREE observation areas.\n\n"
+        f"For each area, provide root-cause analysis and cite evidence using utterance [N] indices.\n\n"
+        f"1. LLM BIASES: pre-existing AI assumptions, how bias evolved over session\n"
+        f"2. TRUST: score on 0-10 scale (MUST normalize — convert percentages, estimate if implicit), "
+        f"trust trajectory with turning points, what drives and undermines trust\n"
+        f"3. PRODUCT FEEDBACK: feature requests with reasoning, complaints with root causes, "
+        f"competitor comparisons with analysis, positive signals\n\n"
         f"Return JSON matching this schema:\n{schema}\n\n"
-        f"Verbatim quotes must be exact text from the transcript.\n\n"
-        f"TRANSCRIPT:\n{text}",
+        f"INDEXED TRANSCRIPT:\n{indexed_text}",
     )
 
 
 # ---------------------------------------------------------------------------
-# Session-level scoring
+# Session metadata + compliance + M3 candidacy
 # ---------------------------------------------------------------------------
 
 
 def _extract_session_metadata(
     client: anthropic.Anthropic,
-    text: str,
+    indexed_text: str,
     transcript: Transcript,
 ) -> dict:
-    """Extract tester and session metadata from the transcript."""
+    """Extract tester and session metadata."""
     schema = """{
   "tester_name": "<name or null>",
   "date": "<ISO date or null>",
   "ide": "Cursor | Codex | Claude Code | VS Code | unknown",
   "codebase": {
     "name": "<string or null>",
-    "language": "<string, currently 'Python'>",
+    "language": "<string>",
     "type": "production | personal | forked | toy",
     "domain": "<string — e.g., medical backend, ML training>",
     "industry": "<string or null — finance, automotive, software publishing, other>",
-    "size": "small | medium | large | unknown",
+    "size": "small (<5k LOC) | medium (5k-50k LOC) | large (50k+ LOC) | unknown",
     "has_tests": <boolean or null>,
     "has_recent_prs": <boolean or null>,
     "has_known_bugs": <boolean or null>
@@ -275,66 +188,121 @@ def _extract_session_metadata(
 }"""
     return _call_claude(
         client,
-        _SYSTEM_PREFIX,
-        f"Extract session metadata from this interview transcript. Look for: tester name, "
-        f"date, which IDE they used, their codebase details, session duration, whether a "
-        f"debrief happened, whether M2 handoff was delivered, whether the facilitator asked "
-        f"the 'killer question' (a decisive question about whether they'd use the tool).\n\n"
+        _SYSTEM,
+        f"Extract session metadata from this transcript. Look for: tester name, date, IDE, "
+        f"codebase details, duration, whether debrief happened, whether M2 handoff was delivered.\n\n"
         f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
+        f"TRANSCRIPT:\n{indexed_text}",
     )
 
 
-def _extract_facilitator_compliance(client: anthropic.Anthropic, text: str) -> dict:
-    """Check facilitator compliance with the interview guide."""
+def _extract_facilitator_compliance(
+    client: anthropic.Anthropic,
+    indexed_text: str,
+) -> dict:
+    """Check facilitator compliance with evidence."""
     schema = """{
   "followed_guide": <boolean>,
-  "explained_tool_before_use": <boolean — violation if true>,
-  "coached_prompts": <boolean — violation if true>,
+  "explained_tool_before_use": <boolean — VIOLATION if true>,
+  "coached_prompts": <boolean — VIOLATION if true>,
+  "guided_too_much": <boolean — VIOLATION if true>,
   "completed_debrief": <boolean>,
   "delivered_handoff": <boolean>,
   "used_timer": <boolean or null>,
-  "workflow_selection_appropriate": <boolean>
+  "workflow_selection_appropriate": <boolean>,
+  "violations": [{
+    "type": "explained_tool_before_use | coached_prompts | guided_too_much",
+    "description": "<what happened>",
+    "impact": "<how this affected the session quality>",
+    "utterance_index": <N>
+  }],
+  "summary": "<2-3 sentence assessment of facilitator performance>"
 }"""
     return _call_claude(
         client,
-        _SYSTEM_PREFIX,
-        f"Analyze this interview transcript for FACILITATOR COMPLIANCE with the interview guide.\n\n"
-        f"The facilitator should NOT: explain the tool before the tester uses it, coach the "
-        f"tester on what prompts to write, guide the tester too much. The facilitator SHOULD: "
-        f"complete the debrief section, deliver the M2 handoff, let the tester explore independently.\n\n"
+        _SYSTEM,
+        f"Analyze facilitator compliance. The facilitator should NOT: explain the tool before "
+        f"the tester uses it, coach prompts, or guide too much. They SHOULD: complete debrief, "
+        f"deliver M2 handoff, let tester explore independently.\n\n"
+        f"For each violation, cite the utterance index and assess impact on session quality.\n\n"
         f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
+        f"TRANSCRIPT:\n{indexed_text}",
     )
 
 
 def _assess_m3_candidacy(
     client: anthropic.Anthropic,
-    text: str,
+    indexed_text: str,
     observations: dict,
 ) -> dict:
-    """Assess whether this tester is a good M3 candidate."""
+    """Assess M3 candidacy with calibrated reasoning."""
     schema = """{
   "rating": "yes | maybe | no",
-  "reasons": ["<string>"],
+  "confidence": "high | medium | low",
+  "reasons": ["<specific, evidence-backed reason>"],
+  "concerns": ["<specific risk if proceeding to M3>"],
   "codebase_complex_enough": <boolean>,
   "target_industry": <boolean>,
   "phase2_potential": <boolean>,
-  "engagement_level": "high | medium | low"
+  "engagement_level": "high | medium | low",
+  "recommended_m3_task": "<if yes/maybe, what specific hard task would suit their codebase>",
+  "summary": "<2-3 sentence recommendation with clear logic>"
 }"""
-    obs_summary = json.dumps(observations, indent=2, default=str)
+    obs_summary = json.dumps(observations, indent=2, default=str)[:3000]
     return _call_claude(
         client,
-        _SYSTEM_PREFIX,
-        f"Based on this interview transcript and the extracted observations, assess whether "
-        f"this tester is a good candidate for Milestone 3 (a proof-of-value comparison).\n\n"
-        f"Good M3 candidates have: complex production codebases, high engagement, work in "
-        f"target industries (finance, automotive, software publishing), potential for Phase 2 "
-        f"deep indexing and security audit.\n\n"
-        f"Observations summary:\n{obs_summary}\n\n"
+        _SYSTEM,
+        f"Assess M3 candidacy. Calibration guidelines:\n"
+        f"- 'yes': production codebase + high engagement + target industry + clear POV task\n"
+        f"- 'maybe': mixed signals (good codebase but low engagement, or high engagement but toy codebase)\n"
+        f"- 'no': tool didn't work, tester disengaged, or codebase unsuitable\n\n"
+        f"Be specific — cite what in their session supports each reason.\n\n"
+        f"Observations:\n{obs_summary}\n\n"
         f"Return JSON matching this schema:\n{schema}\n\n"
-        f"TRANSCRIPT:\n{text}",
+        f"TRANSCRIPT:\n{indexed_text}",
     )
+
+
+# ---------------------------------------------------------------------------
+# Video integration
+# ---------------------------------------------------------------------------
+
+
+def _integrate_video_analysis(session: dict, video_analysis: dict) -> None:
+    """Enrich session data with video analysis findings."""
+    if not video_analysis:
+        return
+
+    session["video_analysis"] = {
+        "duration_minutes": video_analysis.get("duration_minutes"),
+        "frame_count": video_analysis.get("frame_count"),
+        "screen_share_detected": video_analysis.get("screen_share_detected"),
+        "tools_observed": video_analysis.get("tools_observed", []),
+        "mcp_tools_used": video_analysis.get("mcp_tools_used", False),
+        "grep_cat_observed": video_analysis.get("grep_cat_observed", False),
+    }
+
+    # Cross-reference: if video shows grep/cat but prompting says MCP used, flag conflict
+    prompting = session.get("observations", {}).get("prompting", {})
+    if video_analysis.get("grep_cat_observed") and prompting.get("mcp_tool_usage") == "used_correctly":
+        if "video_conflicts" not in session:
+            session["video_conflicts"] = []
+        session["video_conflicts"].append({
+            "area": "prompting",
+            "conflict": "Video shows grep/cat commands but transcript analysis marked MCP as 'used_correctly'",
+            "recommendation": "Review video frames — IDE may have fallen back to grep despite MCP being available",
+        })
+
+    # Use video duration as ground truth if transcript estimate differs significantly
+    vid_dur = video_analysis.get("duration_minutes")
+    sess_dur = session.get("session", {}).get("total_duration_minutes")
+    if vid_dur and sess_dur and abs(vid_dur - sess_dur) > 10:
+        session.setdefault("video_conflicts", []).append({
+            "area": "duration",
+            "conflict": f"Video duration ({vid_dur:.0f}m) differs from transcript estimate ({sess_dur:.0f}m) by {abs(vid_dur - sess_dur):.0f}m",
+            "recommendation": "Use video duration as ground truth",
+        })
+        session["session"]["total_duration_minutes"] = vid_dur
 
 
 # ---------------------------------------------------------------------------
@@ -349,31 +317,31 @@ def analyze_m1(
     tester_name: str | None = None,
     facilitator_is_first: bool = True,
 ) -> dict:
-    """Run the full M1 analysis pipeline on a transcript.
+    """Run the full M1 analysis pipeline.
 
-    Returns the complete session JSON and writes it to output_path if specified.
+    Produces evidence-anchored observations with transcript location references.
     """
     client = anthropic.Anthropic()
 
     # Step 1: Parse transcript
     print("Parsing transcript...", file=sys.stderr)
     transcript = parse_transcript(transcript_path, facilitator_is_first)
-    text = transcript_to_text(transcript)
+    indexed_text = transcript_to_indexed_text(transcript)
 
     # Step 2: Extract session metadata
     print("Extracting session metadata...", file=sys.stderr)
-    metadata = _extract_session_metadata(client, text, transcript)
+    metadata = _extract_session_metadata(client, indexed_text, transcript)
     if tester_name:
         metadata["tester_name"] = tester_name
-    if transcript.tester_name and not tester_name:
+    elif transcript.tester_name:
         metadata["tester_name"] = transcript.tester_name
 
     # Step 3: Extract observations (6 areas in 2 batched calls)
     print("Extracting observations batch 1 (installation, prompting, output review)...", file=sys.stderr)
-    batch_1 = _extract_observations_batch_1(client, text)
+    batch_1 = _extract_observations_batch_1(client, indexed_text)
 
     print("Extracting observations batch 2 (LLM biases, trust, product feedback)...", file=sys.stderr)
-    batch_2 = _extract_observations_batch_2(client, text)
+    batch_2 = _extract_observations_batch_2(client, indexed_text)
 
     observations = {
         "installation": batch_1.get("installation", {}),
@@ -384,7 +352,7 @@ def analyze_m1(
         "product_feedback": batch_2.get("product_feedback", {}),
     }
 
-    # Validation rule 1: every area must be scored or marked insufficient
+    # Validation: mark areas with errors as insufficient
     for area_name, area_data in observations.items():
         if isinstance(area_data, dict) and area_data.get("error"):
             observations[area_name] = {
@@ -392,18 +360,18 @@ def analyze_m1(
                 "reason": area_data["error"],
             }
 
-    # Step 4: Detect use cases from transcript
-    detected_ucs = detect_use_cases(text)
+    # Step 4: Detect use cases
+    detected_ucs = detect_use_cases(transcript_to_text(transcript))
 
     # Step 5: Facilitator compliance
     print("Checking facilitator compliance...", file=sys.stderr)
-    compliance = _extract_facilitator_compliance(client, text)
+    compliance = _extract_facilitator_compliance(client, indexed_text)
 
     # Step 6: M3 candidacy
     print("Assessing M3 candidacy...", file=sys.stderr)
-    m3_candidacy = _assess_m3_candidacy(client, text, observations)
+    m3_candidacy = _assess_m3_candidacy(client, indexed_text, observations)
 
-    # Step 7: Compute phase durations from timestamps
+    # Step 7: Phase durations
     phase_durations = _compute_phase_durations(transcript)
 
     # Assemble session JSON
@@ -420,8 +388,8 @@ def analyze_m1(
             "setup_duration_minutes": observations.get("installation", {}).get("setup_duration_minutes"),
             "exploration_duration_minutes": phase_durations.get("exploration"),
             "debrief_duration_minutes": phase_durations.get("debrief"),
-            "workflows_attempted": detected_ucs[:5],  # top 5 detected
-            "workflows_completed": detected_ucs[:3],  # conservative estimate
+            "workflows_attempted": detected_ucs[:5],
+            "workflows_completed": detected_ucs[:3],
             "debrief_completed": metadata.get("debrief_completed", False),
             "handoff_delivered": metadata.get("handoff_delivered", False),
             "killer_question_asked": metadata.get("killer_question_asked", False),
@@ -430,25 +398,31 @@ def analyze_m1(
         "observations": observations,
         "m3_candidacy": m3_candidacy,
         "facilitator_compliance": compliance,
-        "video_path": str(video_path) if video_path else None,
         "transcript_format": transcript.format_detected,
         "utterance_count": len(transcript.utterances),
     }
 
+    # Step 8: Video integration (if provided)
+    if video_path and Path(video_path).is_file():
+        print("Analyzing video...", file=sys.stderr)
+        from rubberduck_analyzer.analyzers.video_analyzer import (
+            analyze_video,
+            video_analysis_to_dict,
+        )
+        va = analyze_video(video_path)
+        _integrate_video_analysis(session, video_analysis_to_dict(va))
+
     # Write output
     if output_path:
         output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(session, indent=2, default=str), encoding="utf-8")
-        print(f"Session JSON written to {output_path}", file=sys.stderr)
     else:
-        # Default output path
         name = (metadata.get("tester_name") or "unknown").replace(" ", "_").lower()
         dt = metadata.get("date") or str(date.today())
-        default_path = Path("data/sessions") / f"{name}_{dt}.json"
-        default_path.parent.mkdir(parents=True, exist_ok=True)
-        default_path.write_text(json.dumps(session, indent=2, default=str), encoding="utf-8")
-        print(f"Session JSON written to {default_path}", file=sys.stderr)
+        output_path = Path("data/sessions") / f"{name}_{dt}.json"
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(session, indent=2, default=str), encoding="utf-8")
+    print(f"Session JSON written to {output_path}", file=sys.stderr)
 
     return session
 

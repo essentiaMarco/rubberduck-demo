@@ -331,3 +331,22 @@ def transcript_to_text(transcript: Transcript) -> str:
         ts = f"[{utt.timestamp:.0f}s] " if utt.timestamp is not None else ""
         parts.append(f"{ts}{label}: {utt.text}")
     return "\n".join(parts)
+
+
+def transcript_to_indexed_text(transcript: Transcript) -> str:
+    """Convert transcript to indexed format so Claude can cite utterance positions.
+
+    Output format:
+      [1] [5s] [baseline] Facilitator: Hi Samuel...
+      [2] [10s] [baseline] Tester: Hello, nice to meet you...
+
+    Each line has: [utterance_index] [timestamp] [phase] Speaker: text
+    This enables Claude to reference specific utterances by index in evidence arrays.
+    """
+    parts: list[str] = []
+    for i, utt in enumerate(transcript.utterances, 1):
+        label = "Facilitator" if utt.speaker == "facilitator" else "Tester"
+        ts = f"[{utt.timestamp:.0f}s] " if utt.timestamp is not None else ""
+        phase = f"[{utt.phase}] " if utt.phase else ""
+        parts.append(f"[{i}] {ts}{phase}{label}: {utt.text}")
+    return "\n".join(parts)
