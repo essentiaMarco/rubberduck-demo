@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}RubberDuck Analyzer{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+  <nav class="nav">
+    <span class="nav-brand">RubberDuck Analyzer</span>
+    <a href="/">Dashboard</a>
+    <a href="/analyze/">Upload</a>
+    <a href="/sessions/">Sessions</a>
+    <a href="/synthesis/">Synthesis</a>
+    <a href="/context/">Context</a>
+  </nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

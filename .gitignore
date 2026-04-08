@@ -1,3 +1,13 @@
+# RubberDuck Analyzer data (user-generated, not code)
+data/sessions/*.json
+data/context/*.json
+data/reports/*.xlsx
+data/reports/*.md
+data/reports/*.json
+data/uploads/
+data/jobs.db
+!data/**/.gitkeep
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

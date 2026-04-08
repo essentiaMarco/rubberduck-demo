@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ session.tester.name or 'Session' }} - RubberDuck Analyzer{% endblock %}
+{% block content %}
+<h1 style="margin-bottom: 0.5rem;">{{ session.tester.name or 'Unknown Tester' }}</h1>
+<p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+  {{ session.tester.date or '' }} | {{ session.milestone or 'M1' }} |
+  {{ session.tester.ide or '' }} |
+  {{ session.tester.codebase.name or '' }} ({{ session.tester.codebase.language or 'Python' }})
+</p>
+
+<!-- Session Stats -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">{{ session.observations.trust.trust_score or '-' }}</div>
+    <div class="stat-label">Trust Score</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ session.observations.prompting.prompt_independence or '-' }}</div>
+    <div class="stat-label">Prompt Independence</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ session.observations.output_review.review_depth or '-' }}</div>
+    <div class="stat-label">Review Depth</div>
+  </div>
+  <div class="stat">
+    {% if session.m3_candidacy %}
+    <div class="stat-value"><span class="badge badge-{{ session.m3_candidacy.rating }}">{{ session.m3_candidacy.rating }}</span></div>
+    {% else %}
+    <div class="stat-value">-</div>
+    {% endif %}
+    <div class="stat-label">M3 Candidacy</div>
+  </div>
+</div>
+
+<!-- Observations -->
+<h2 style="margin-bottom: 1rem;">Observations</h2>
+<div class="obs-grid">
+  {% for area_name, area in session.observations.items() %}
+  <div class="card">
+    <h3>{{ area_name | replace('_', ' ') | title }}</h3>
+    {% if area is mapping %}
+      {% for key, value in area.items() %}
+        {% if key != 'verbatim_quotes' %}
+        <div style="margin-bottom: 0.4rem;">
+          <span style="color: var(--text-muted); font-size: 0.8rem;">{{ key | replace('_', ' ') }}:</span>
+          {% if value is iterable and value is not string %}
+            <span style="font-size: 0.85rem;">{{ value | length }} items</span>
+          {% else %}
+            <span style="font-size: 0.85rem;">{{ value }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+      {% if area.verbatim_quotes %}
+      <div style="margin-top: 0.75rem;">
+        {% for q in area.verbatim_quotes[:3] %}
+        <div class="quote">{{ q }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Facilitator Compliance -->
+{% if session.facilitator_compliance %}
+<div class="card" style="margin-top: 1.5rem;">
+  <h2>Facilitator Compliance</h2>
+  <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 0.75rem;">
+    {% for key, value in session.facilitator_compliance.items() %}
+    <div>
+      <span style="color: var(--text-muted); font-size: 0.8rem;">{{ key | replace('_', ' ') }}:</span>
+      {% if key in ['explained_tool_before_use', 'coached_prompts'] %}
+        {# These are VIOLATIONS when true — invert the color #}
+        {% if value == true %}
+          <span class="badge badge-failed">Yes (violation)</span>
+        {% elif value == false %}
+          <span class="badge badge-completed">No</span>
+        {% else %}
+          <span style="font-size: 0.85rem;">{{ value }}</span>
+        {% endif %}
+      {% elif value == true %}
+        <span class="badge badge-completed">Yes</span>
+      {% elif value == false %}
+        <span class="badge badge-failed">No</span>
+      {% else %}
+        <span style="font-size: 0.85rem;">{{ value }}</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div style="margin-top: 1.5rem;">
+  <a href="/sessions/{{ session_id }}/json" class="btn btn-secondary">Download JSON</a>
+  <a href="/sessions/" class="btn btn-secondary" style="margin-left: 0.5rem;">Back to Sessions</a>
+  <button class="btn btn-secondary" style="margin-left: 0.5rem; background: var(--error); color: white;"
+    hx-delete="/sessions/{{ session_id }}"
+    hx-confirm="Delete this session? This cannot be undone."
+    hx-target="body"
+    hx-swap="innerHTML"
+  >Delete Session</button>
+</div>
+{% endblock %}

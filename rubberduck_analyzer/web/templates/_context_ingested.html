@@ -1,0 +1,7 @@
+<div class="card" style="border-color: var(--success);">
+  <p style="color: var(--success);">
+    Ingested <strong>{{ result.chunk_count }}</strong> chunks from
+    <strong>{{ result.doc_type }}</strong> document
+    ({{ (result.total_characters / 1024) | round(1) }} KB).
+  </p>
+</div>
