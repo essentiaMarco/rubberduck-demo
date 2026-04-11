@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
@@ -61,7 +61,7 @@ async def job_stream():
 def get_job(job_id: str, db: Session = Depends(get_db)):
     job = db.query(Job).get(job_id)
     if not job:
-        return {"error": "Job not found"}, 404
+        raise HTTPException(status_code=404, detail="Job not found")
     return _job_dict(job)
 
 

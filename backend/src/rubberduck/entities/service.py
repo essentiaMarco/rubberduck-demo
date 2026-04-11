@@ -13,10 +13,12 @@ from rubberduck.db.models import (
     EntityAlias,
     EntityMention,
     File,
+    ForensicSecret,
     Relationship,
 )
 from rubberduck.entities.regex_extractors import extract_all as regex_extract_all
 from rubberduck.entities.resolver import resolve_mentions
+from rubberduck.entities.secret_scanner import mask_secret, scan_secrets
 from rubberduck.entities.spacy_ner import extract_entities as spacy_extract
 
 logger = logging.getLogger(__name__)
@@ -56,20 +58,49 @@ def extract_and_resolve(db: Session, file_id: str) -> dict[str, Any]:
     spacy_mentions = spacy_extract(text, file_id=file_id)
     regex_mentions = regex_extract_all(text, file_id=file_id)
 
-    all_mentions = spacy_mentions + regex_mentions
+    # Run secret scanner — passwords, keys, tokens, crypto wallets
+    secret_mentions = scan_secrets(text, file_id=file_id)
+
+    all_mentions = spacy_mentions + regex_mentions + secret_mentions
 
     # Resolve against existing entities
     resolved = resolve_mentions(db, all_mentions, file_id, source_text=text)
+
+    # Persist ForensicSecret records for detailed tracking
+    secrets_found = 0
+    for sm in secret_mentions:
+        context_start = max(0, sm.get("char_offset", 0) - 80)
+        context_end = min(len(text), sm.get("char_offset", 0) + len(sm["text"]) + 80)
+        context = text[context_start:context_end]
+
+        secret = ForensicSecret(
+            file_id=file_id,
+            secret_type=sm.get("secret_type", sm["entity_type"]),
+            secret_category=sm["entity_type"],
+            severity=sm.get("severity", "medium"),
+            detected_value=sm["text"],
+            masked_value=mask_secret(sm["text"]),
+            context_snippet=context,
+            char_offset=sm.get("char_offset"),
+            detection_method=sm.get("detection_method", "regex"),
+            confidence=sm.get("confidence", 0.9),
+        )
+        db.add(secret)
+        secrets_found += 1
+
+    if secrets_found:
+        db.commit()
 
     result = {
         "file_id": file_id,
         "spacy_mentions": len(spacy_mentions),
         "regex_mentions": len(regex_mentions),
+        "secret_mentions": len(secret_mentions),
         "resolved": len(resolved),
     }
 
     # Explicitly free large objects to reduce memory pressure
-    del text, spacy_mentions, regex_mentions, all_mentions, resolved
+    del text, spacy_mentions, regex_mentions, secret_mentions, all_mentions, resolved
     gc.collect()
 
     return result

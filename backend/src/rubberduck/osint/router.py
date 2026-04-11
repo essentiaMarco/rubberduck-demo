@@ -1,6 +1,6 @@
 """API routes for OSINT research."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from rubberduck.db.models import ResearchCapture, ResearchPlan
@@ -47,7 +47,7 @@ def list_plans(case_id: str | None = None, db: Session = Depends(get_db)):
 def approve_plan(plan_id: str, db: Session = Depends(get_db)):
     plan = db.query(ResearchPlan).get(plan_id)
     if not plan:
-        return {"error": "Plan not found"}, 404
+        raise HTTPException(status_code=404, detail="Plan not found")
     from datetime import datetime, timezone
     plan.status = "approved"
     plan.approved_at = datetime.now(timezone.utc)

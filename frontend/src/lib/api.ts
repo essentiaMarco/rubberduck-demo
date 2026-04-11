@@ -202,6 +202,53 @@ export const analysis = {
     apiFetch<any>("/api/analysis/run", { method: "POST" }),
 };
 
+// ── Forensic Secrets ─────────────────────────────────────────
+export const secrets = {
+  list: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch<any>(`/api/secrets?${qs}`);
+  },
+  stats: () => apiFetch<any>("/api/secrets/stats"),
+  get: (id: string) => apiFetch<any>(`/api/secrets/${id}`),
+  review: (id: string, body: any) =>
+    apiFetch<any>(`/api/secrets/${id}/review`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  scan: () => apiFetch<any>("/api/secrets/scan", { method: "POST" }),
+};
+
+// ── Forensic Alerts ─────────────────────────────────────────
+export const alerts = {
+  list: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch<any>(`/api/alerts?${qs}`);
+  },
+  stats: () => apiFetch<any>("/api/alerts/stats"),
+  get: (id: string) => apiFetch<any>(`/api/alerts/${id}`),
+  dismiss: (id: string, reason?: string) =>
+    apiFetch<any>(`/api/alerts/${id}/dismiss`, {
+      method: "PATCH",
+      body: JSON.stringify({ dismiss_reason: reason }),
+    }),
+  run: () => apiFetch<any>("/api/alerts/run", { method: "POST" }),
+};
+
+// ── Watchlist ────────────────────────────────────────────────
+export const watchlist = {
+  list: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch<any>(`/api/watchlist?${qs}`);
+  },
+  add: (body: any) =>
+    apiFetch<any>("/api/watchlist", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    apiFetch<any>(`/api/watchlist/${id}`, { method: "DELETE" }),
+};
+
 // ── Jobs ───────────────────────────────────────────────────
 export const jobs = {
   list: (params: Record<string, string> = {}) => {

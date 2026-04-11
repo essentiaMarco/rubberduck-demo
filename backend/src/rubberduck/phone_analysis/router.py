@@ -153,15 +153,18 @@ def get_stats(db: Session = Depends(get_db)):
         .all()
     )
 
-    # By month
-    rows = db.query(PhoneRecord).filter(PhoneRecord.call_datetime.isnot(None)).all()
-    month_counts: dict[str, int] = {}
-    for r in rows:
-        key = r.call_datetime.strftime("%Y-%m")
-        month_counts[key] = month_counts.get(key, 0) + 1
-    by_month = [
-        {"month": m, "count": c} for m, c in sorted(month_counts.items())
-    ]
+    # By month (SQL aggregation instead of loading all rows into memory)
+    month_rows = (
+        db.query(
+            func.strftime("%Y-%m", PhoneRecord.call_datetime).label("month"),
+            func.count().label("cnt"),
+        )
+        .filter(PhoneRecord.call_datetime.isnot(None))
+        .group_by("month")
+        .order_by("month")
+        .all()
+    )
+    by_month = [{"month": r.month, "count": r.cnt} for r in month_rows]
 
     # Total duration
     total_duration = (
@@ -276,7 +279,25 @@ def ingest_phone_bills(
     db: Session = Depends(get_db),
 ):
     """Ingest Vodafone bill PDFs from a folder and extract CDR records."""
+    from pathlib import Path
+    from rubberduck.config import settings
+
+    # Validate path is within allowed directories to prevent path traversal
+    resolved = Path(folder_path).resolve()
+    allowed_bases = (
+        [Path(p).resolve() for p in settings.allowed_ingest_paths]
+        if settings.allowed_ingest_paths
+        else [settings.data_dir.resolve()]
+    )
+    if not any(resolved == base or resolved.is_relative_to(base) for base in allowed_bases):
+        raise HTTPException(
+            status_code=403,
+            detail="Directory is outside allowed ingest paths",
+        )
+    if not resolved.is_dir():
+        raise HTTPException(status_code=400, detail="Path is not a directory")
+
     from rubberduck.phone_analysis.extractor import extract_all_phone_bills
 
-    result = extract_all_phone_bills(db, folder_path, reprocess=reprocess)
+    result = extract_all_phone_bills(db, str(resolved), reprocess=reprocess)
     return result

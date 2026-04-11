@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "🏠" },
+  { href: "/alerts", label: "Alerts", icon: "🚨" },
+  { href: "/secrets", label: "Secrets", icon: "🔑" },
   { href: "/search", label: "Search", icon: "🔎" },
   { href: "/communications", label: "Communications", icon: "💬" },
   { href: "/phone-analysis", label: "Phone Analysis", icon: "📞" },
@@ -27,7 +29,7 @@ export function Sidebar() {
     <aside className="w-56 bg-forensic-surface border-r border-forensic-border flex flex-col h-full">
       <div className="p-4 border-b border-forensic-border">
         <h1 className="text-lg font-bold text-forensic-accent">
-          Rubberduck
+          Gotham4Justice
         </h1>
         <p className="text-xs text-slate-500 mt-1">Digital Forensic Platform</p>
       </div>

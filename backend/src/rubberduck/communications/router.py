@@ -47,6 +47,11 @@ def list_messages(
     if date_end:
         q = q.filter(EmailMessage.email_date <= date_end)
 
+    # Exclude records with no email metadata (binary files misidentified as .eml)
+    q = q.filter(
+        (EmailMessage.email_from.isnot(None)) | (EmailMessage.email_subject.isnot(None))
+    )
+
     total = q.count()
 
     # Sorting
@@ -56,11 +61,6 @@ def list_messages(
         order_col = EmailMessage.email_from
     else:
         order_col = EmailMessage.email_date
-
-    # Exclude records with no email metadata (binary files misidentified as .eml)
-    q = q.filter(
-        (EmailMessage.email_from.isnot(None)) | (EmailMessage.email_subject.isnot(None))
-    )
 
     if sort_dir == "asc":
         q = q.order_by(order_col.asc().nullslast())
