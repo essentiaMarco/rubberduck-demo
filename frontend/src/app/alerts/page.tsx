@@ -253,6 +253,16 @@ export default function AlertsPage() {
               {a.description && (
                 <div style={{ color: "#94a3b8", fontSize: 13, marginTop: 6 }}>{a.description}</div>
               )}
+              {a.file_name && (
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Source: <a href={`/evidence/${a.evidence_file_id}`} style={{ color: "#6366f1", textDecoration: "underline" }}>
+                    {a.file_name}
+                  </a>
+                  {a.original_path && (
+                    <span style={{ color: "#475569", marginLeft: 6 }}>({a.original_path})</span>
+                  )}
+                </div>
+              )}
               <div style={{ color: "#475569", fontSize: 11, marginTop: 4 }}>
                 {a.created_at ? new Date(a.created_at).toLocaleString() : ""} | Rule: {a.rule_name || "manual"}
               </div>

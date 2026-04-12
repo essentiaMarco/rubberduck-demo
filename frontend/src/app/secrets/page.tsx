@@ -200,9 +200,8 @@ export default function SecretsPage() {
             <tr style={{ borderBottom: "1px solid #334155", color: "#94a3b8", fontSize: 12, textTransform: "uppercase" }}>
               <th style={{ textAlign: "left", padding: "8px 12px" }}>Severity</th>
               <th style={{ textAlign: "left", padding: "8px 12px" }}>Type</th>
-              <th style={{ textAlign: "left", padding: "8px 12px" }}>Category</th>
               <th style={{ textAlign: "left", padding: "8px 12px" }}>Masked Value</th>
-              <th style={{ textAlign: "left", padding: "8px 12px" }}>Detection</th>
+              <th style={{ textAlign: "left", padding: "8px 12px" }}>Source File</th>
               <th style={{ textAlign: "left", padding: "8px 12px" }}>Confidence</th>
               <th style={{ textAlign: "center", padding: "8px 12px" }}>Actions</th>
             </tr>
@@ -232,11 +231,23 @@ export default function SecretsPage() {
                     </span>
                   </td>
                   <td style={{ padding: "8px 12px", color: "#e2e8f0" }}>{s.secret_type}</td>
-                  <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{s.secret_category}</td>
                   <td style={{ padding: "8px 12px", fontFamily: "monospace", color: "#67e8f9" }}>
                     {s.masked_value || "****"}
                   </td>
-                  <td style={{ padding: "8px 12px", color: "#94a3b8" }}>{s.detection_method}</td>
+                  <td style={{ padding: "8px 12px" }}>
+                    {s.file_name ? (
+                      <a
+                        href={`/evidence/${s.file_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ color: "#6366f1", textDecoration: "underline", fontSize: 13 }}
+                        title={s.original_path || s.file_name}
+                      >
+                        {s.file_name.length > 30 ? s.file_name.slice(0, 27) + "..." : s.file_name}
+                      </a>
+                    ) : (
+                      <span style={{ color: "#475569", fontSize: 12 }}>{s.file_id?.slice(0, 8)}...</span>
+                    )}
+                  </td>
                   <td style={{ padding: "8px 12px", color: "#94a3b8" }}>
                     {((s.confidence || 0) * 100).toFixed(0)}%
                   </td>
@@ -272,8 +283,16 @@ export default function SecretsPage() {
                           {detail.context_snippet}
                         </pre>
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
-                        File: {detail.file_id} | Offset: {detail.char_offset}
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>
+                        File: <a href={`/evidence/${detail.file_id}`} style={{ color: "#6366f1" }}>
+                          {(s as any).file_name || detail.file_id}
+                        </a>
+                        {(s as any).original_path && (
+                          <span style={{ marginLeft: 8, color: "#475569" }}>
+                            ({(s as any).original_path})
+                          </span>
+                        )}
+                        {" "}| Offset: {detail.char_offset} | Category: {detail.secret_category} | Method: {detail.detection_method}
                       </div>
                     </td>
                   </tr>

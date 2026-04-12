@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from rubberduck.db.models import ForensicAlert, ForensicSecret, WatchlistEntry
+from rubberduck.db.models import File as FileModel, ForensicAlert, ForensicSecret, WatchlistEntry
 from rubberduck.db.sqlite import get_db
 from rubberduck.forensics.alerts import run_alert_rules
 from rubberduck.schemas.alerts import (
@@ -68,8 +68,23 @@ def list_secrets(
         .all()
     )
 
+    # Enrich with file names so investigators can locate the source
+    file_ids = {s.file_id for s in secrets}
+    file_names = {}
+    if file_ids:
+        for f in db.query(FileModel.id, FileModel.file_name, FileModel.original_path).filter(FileModel.id.in_(file_ids)).all():
+            file_names[f.id] = {"file_name": f.file_name, "original_path": f.original_path}
+
+    items = []
+    for s in secrets:
+        d = ForensicSecretResponse.model_validate(s).model_dump()
+        finfo = file_names.get(s.file_id, {})
+        d["file_name"] = finfo.get("file_name")
+        d["original_path"] = finfo.get("original_path")
+        items.append(d)
+
     return {
-        "items": [ForensicSecretResponse.model_validate(s).model_dump() for s in secrets],
+        "items": items,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -101,6 +116,16 @@ def secret_stats(db: Session = Depends(get_db)):
         total=total, by_severity=by_severity, by_category=by_category,
         by_type=by_type, unreviewed=unreviewed, dismissed=dismissed,
     )
+
+
+@router.post("/api/secrets/clear")
+def clear_secrets(db: Session = Depends(get_db)):
+    """Clear all forensic secrets (for re-scanning after improving patterns)."""
+    from sqlalchemy import text
+    count = db.query(ForensicSecret).count()
+    db.execute(text("DELETE FROM forensic_secrets"))
+    db.commit()
+    return {"deleted": count, "message": f"Cleared {count} secrets"}
 
 
 @router.post("/api/secrets/scan")
@@ -209,6 +234,17 @@ def review_secret(
     return secret
 
 
+# ── Hidden Content Scan ──────────────────────────────────────
+
+
+@router.post("/api/forensics/hidden-content-scan")
+def trigger_hidden_content_scan(db: Session = Depends(get_db)):
+    """Scan all evidence for encrypted files, type mismatches, hidden DOCX content."""
+    from rubberduck.forensics.hidden_content import scan_hidden_content
+    result = scan_hidden_content(db)
+    return result
+
+
 # ── Alerts ───────────────────────────────────────────────────
 
 
@@ -241,8 +277,23 @@ def list_alerts(
         .all()
     )
 
+    # Enrich with file names
+    file_ids = {a.evidence_file_id for a in alerts if a.evidence_file_id}
+    file_names = {}
+    if file_ids:
+        for f in db.query(FileModel.id, FileModel.file_name, FileModel.original_path).filter(FileModel.id.in_(file_ids)).all():
+            file_names[f.id] = {"file_name": f.file_name, "original_path": f.original_path}
+
+    items = []
+    for a in alerts:
+        d = ForensicAlertResponse.model_validate(a).model_dump()
+        finfo = file_names.get(a.evidence_file_id, {})
+        d["file_name"] = finfo.get("file_name")
+        d["original_path"] = finfo.get("original_path")
+        items.append(d)
+
     return {
-        "items": [ForensicAlertResponse.model_validate(a).model_dump() for a in alerts],
+        "items": items,
         "total": total,
         "page": page,
         "page_size": page_size,

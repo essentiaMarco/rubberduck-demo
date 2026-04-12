@@ -9,6 +9,7 @@ from rubberduck.evidence.parsers.email_parser import EmailParser, MboxParser
 from rubberduck.evidence.parsers.image import ImageParser
 from rubberduck.evidence.parsers.google_takeout import GoogleTakeoutParser
 from rubberduck.evidence.parsers.whatsapp_parser import WhatsAppParser
+from rubberduck.evidence.parsers.browser_db import BrowserDbParser
 
 # Parser registry: MIME type -> parser class
 PARSER_REGISTRY: dict[str, type[BaseParser]] = {}
@@ -50,6 +51,9 @@ def get_parser_for_ext(ext: str) -> type[BaseParser] | None:
         ".jpg": ImageParser, ".jpeg": ImageParser, ".png": ImageParser,
         ".gif": ImageParser, ".tiff": ImageParser, ".bmp": ImageParser,
         ".webp": ImageParser, ".heic": ImageParser,
+        # Browser databases
+        ".sqlite": BrowserDbParser, ".db": BrowserDbParser, ".sqlite3": BrowserDbParser,
+        ".sqlitedb": BrowserDbParser,
     }
     # Check if .txt file is actually a WhatsApp export
     if ext.lower() == ".txt":
