@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api/hypotheses", tags=["hypotheses"])
 # ── Create ────────────────────────────────────────────────
 
 
+@router.post("", response_model=HypothesisResponse)
 @router.post("/", response_model=HypothesisResponse)
 def create_hypothesis(body: HypothesisCreate, db: Session = Depends(get_db)):
     """Create a new hypothesis for a case."""
@@ -40,6 +41,7 @@ def create_hypothesis(body: HypothesisCreate, db: Session = Depends(get_db)):
 # ── List ──────────────────────────────────────────────────
 
 
+@router.get("", response_model=list[HypothesisResponse])
 @router.get("/", response_model=list[HypothesisResponse])
 def list_hypotheses(
     case_id: str | None = None,

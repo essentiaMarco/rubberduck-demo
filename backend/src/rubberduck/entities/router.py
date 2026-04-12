@@ -38,6 +38,7 @@ router = APIRouter(prefix="/api/entities", tags=["entities"])
 # ── List entities ─────────────────────────────────────────────
 
 
+@router.get("", response_model=dict)
 @router.get("/", response_model=dict)
 def list_entities(
     entity_type: str | None = None,
@@ -440,3 +441,39 @@ def re_extract_all_entities(db: Session = Depends(get_db)):
         params={},
     )
     return {"job_id": job_id, "message": "Full entity re-extraction started"}
+
+
+@router.post("/cleanup-noise")
+def cleanup_noise_entities(db: Session = Depends(get_db)):
+    """Delete entities that match known noise patterns (fonts, CSS, HTML artifacts).
+
+    This is a fast cleanup that removes garbage without full re-extraction.
+    Deletes the entity and cascades to mentions, aliases, and relationships.
+    """
+    from rubberduck.entities.spacy_ner import _BLOCKLIST, _is_noise
+
+    all_entities = db.query(Entity).all()
+    deleted = 0
+    deleted_names = []
+
+    for entity in all_entities:
+        name = entity.canonical_name or ""
+        if _is_noise(name) or len(name) <= 2:
+            # Delete mentions first (FK constraint)
+            db.query(EntityMention).filter(EntityMention.entity_id == entity.id).delete()
+            db.query(Relationship).filter(
+                (Relationship.source_entity_id == entity.id) | (Relationship.target_entity_id == entity.id)
+            ).delete(synchronize_session=False)
+            from rubberduck.db.models import EntityAlias
+            db.query(EntityAlias).filter(EntityAlias.entity_id == entity.id).delete()
+            db.delete(entity)
+            deleted += 1
+            if deleted <= 20:
+                deleted_names.append(name)
+
+    db.commit()
+    return {
+        "deleted": deleted,
+        "sample_deleted": deleted_names,
+        "remaining": db.query(Entity).count(),
+    }

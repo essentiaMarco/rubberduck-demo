@@ -103,7 +103,7 @@ export const graph = {
 // ── Hypotheses ─────────────────────────────────────────────
 export const hypotheses = {
   list: (caseId?: string) =>
-    apiFetch<any>(`/api/hypotheses/${caseId ? `?case_id=${caseId}` : ""}`),
+    apiFetch<any>(`/api/hypotheses/${caseId ? `?case_id=${caseId}` : ""}`).catch(() => []),
   get: (id: string) => apiFetch<any>(`/api/hypotheses/${id}`),
   create: (data: any) =>
     apiFetch<any>("/api/hypotheses", { method: "POST", body: JSON.stringify(data) }),

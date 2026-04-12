@@ -144,8 +144,7 @@ export default function MapPage() {
         <>
           {/* Location table with coordinates */}
           <div style={{ marginBottom: 16, color: "#94a3b8", fontSize: 13 }}>
-            Showing {locations.length} location{locations.length !== 1 ? "s" : ""}.
-            To view on an interactive map, install <code>react-leaflet</code> (npm i react-leaflet leaflet).
+            Showing {locations.length} location{locations.length !== 1 ? "s" : ""}. Click "View" to open in Google Maps.
           </div>
 
           <table style={{ width: "100%", borderCollapse: "collapse" }}>

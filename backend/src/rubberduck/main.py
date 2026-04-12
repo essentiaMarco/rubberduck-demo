@@ -70,11 +70,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Rubberduck",
-    description="Local-first digital forensic investigative platform",
-    version="0.1.0",
+    title="Gotham4Justice",
+    description="Digital forensic investigation platform for law enforcement",
+    version="0.2.0",
     lifespan=lifespan,
-    redirect_slashes=False,  # Prevent 307 redirects that break reverse proxy setups
+    redirect_slashes=False,
 )
 
 # Bearer token authentication (must be added before CORS so it runs after CORS in the middleware stack)

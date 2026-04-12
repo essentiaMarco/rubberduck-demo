@@ -61,12 +61,18 @@ _BLOCKLIST: set[str] = {
     "franklin gothic", "lucida console", "lucida grande", "lucida sans",
     "ms sans serif", "ms serif", "palatino linotype", "segoe ui",
     "trebuchet ms", "sans-serif", "serif", "monospace",
-    "helvetica neue", "blinkmacfont", "blinkmacfontsystem",
-    "blinkmacfontsystemfont", "blinkmactypeface", "blinkmac",
+    "helvetica neue", "helvetica neue'", "segoe ui'",
+    "blinkmacfont", "blinkmacfontsystem", "blinkmacfontsystemfont",
+    "blinkmactypeface", "blinkmac", "blinkmacssystemfont", "blinkmacsystemfont",
     "system-ui", "apple color emoji", "segoe ui emoji", "noto color emoji",
     "segoe ui symbol", "droid sans", "fira sans", "source sans pro",
     "noto sans", "inter", "poppins", "barlow", "karla", "merriweather",
     "playfair display", "pt sans", "pt serif", "work sans",
+    # Additional font names that spaCy misclassifies
+    "avenir", "futura", "didot", "gill sans", "optima", "rockwell",
+    "copperplate", "brush script", "impact", "monaco", "menlo",
+    "andale mono", "courier new", "dejavu sans", "liberation sans",
+    "cantarell", "oxygen", "freesans", "bitstream vera",
     # CSS / HTML artifacts
     "none", "auto", "inherit", "initial", "unset", "normal", "bold",
     "italic", "underline", "solid", "hidden", "visible", "block",
@@ -148,8 +154,22 @@ def _is_noise(surface: str) -> bool:
     # Strip trailing/leading quotes and punctuation that leak from HTML
     lower = lower.strip("'\"`,;:.")
 
-    # Blocklist check
+    # Blocklist check (exact match)
     if lower in _BLOCKLIST:
+        return True
+
+    # Blocklist check (partial match for multi-word font names)
+    # If ANY word in the surface text is a known font name, reject
+    words = lower.split()
+    for word in words:
+        clean_word = word.strip("'\"`,;:.-")
+        if clean_word in _BLOCKLIST:
+            return True
+
+    # Font-family heuristic: strings containing font-related patterns
+    if any(kw in lower for kw in ("font", "sans", "serif", "mono", "emoji",
+                                    "symbol", "system-ui", "cursive", "fantasy",
+                                    "style=", "class=", "mso-", "webkit-")):
         return True
 
     # Pattern-based rejection

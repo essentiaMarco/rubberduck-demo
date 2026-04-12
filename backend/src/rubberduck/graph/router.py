@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
 
+@router.get("", response_model=GraphData)
 @router.get("/", response_model=GraphData)
 def get_full_graph(
     layers: list[str] | None = Query(None, description="Filter by relationship layers"),

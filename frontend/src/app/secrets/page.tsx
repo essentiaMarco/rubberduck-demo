@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Fragment, useEffect, useState, useCallback } from "react";
 import { secrets, alerts } from "@/lib/api";
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -208,9 +208,8 @@ export default function SecretsPage() {
           </thead>
           <tbody>
             {items.map((s: any) => (
-              <>
+              <Fragment key={s.id}>
                 <tr
-                  key={s.id}
                   onClick={() => handleExpand(s.id)}
                   style={{
                     borderBottom: "1px solid #1e293b",
@@ -297,7 +296,7 @@ export default function SecretsPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>

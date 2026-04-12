@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "🏠" },
-  { href: "/alerts", label: "Alerts", icon: "🚨" },
-  { href: "/secrets", label: "Secrets", icon: "🔑" },
+  { href: "/alerts", label: "Alerts", icon: "🚨", badgeKey: "alerts" },
+  { href: "/secrets", label: "Secrets", icon: "🔑", badgeKey: "secrets" },
   { href: "/financial", label: "Financial", icon: "💰" },
   { href: "/map", label: "Map", icon: "🗺️" },
   { href: "/search", label: "Search", icon: "🔎" },
@@ -26,6 +27,20 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [badges, setBadges] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    // Fetch badge counts for alerts and secrets
+    Promise.all([
+      fetch("/api/alerts/stats").then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch("/api/secrets/stats").then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([alertData, secretData]) => {
+      const b: Record<string, number> = {};
+      if (alertData?.unreviewed) b.alerts = alertData.unreviewed;
+      if (secretData?.unreviewed) b.secrets = secretData.unreviewed;
+      setBadges(b);
+    });
+  }, [pathname]); // Refresh badges on navigation
 
   return (
     <aside className="w-56 bg-forensic-surface border-r border-forensic-border flex flex-col h-full">
@@ -43,6 +58,8 @@ export function Sidebar() {
               ? pathname === "/"
               : pathname.startsWith(item.href);
 
+          const badgeCount = (item as any).badgeKey ? badges[(item as any).badgeKey] : undefined;
+
           return (
             <Link
               key={item.href}
@@ -54,7 +71,12 @@ export function Sidebar() {
               }`}
             >
               <span className="text-base">{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {badgeCount !== undefined && badgeCount > 0 && (
+                <span className="bg-red-500/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {badgeCount > 999 ? `${Math.floor(badgeCount / 1000)}k` : badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}

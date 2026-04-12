@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { evidence, jobs as jobsApi, analysis } from "@/lib/api";
+import { evidence, jobs as jobsApi, analysis, secrets, alerts } from "@/lib/api";
+
+function fmt(n: number | undefined | null): string {
+  if (n === null || n === undefined) return "--";
+  return n.toLocaleString();
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
+  const [secretStats, setSecretStats] = useState<any>(null);
+  const [alertStats, setAlertStats] = useState<any>(null);
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
@@ -13,6 +20,8 @@ export default function Dashboard() {
 
   const refreshData = () => {
     evidence.getStats().then(setStats).catch(console.error);
+    secrets.stats().then(setSecretStats).catch(() => {});
+    alerts.stats().then(setAlertStats).catch(() => {});
     jobsApi.list({ page_size: "10" }).then((r) => setRecentJobs(r.items || [])).catch(console.error);
   };
 
@@ -106,14 +115,16 @@ export default function Dashboard() {
       )}
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Files" value={stats?.total_files ?? "—"} />
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        <StatCard label="Total Files" value={fmt(stats?.total_files)} />
         <StatCard
           label="Total Size"
           value={stats ? formatBytes(stats.total_size_bytes) : "—"}
         />
-        <StatCard label="Sources" value={stats?.sources_count ?? "—"} />
-        <StatCard label="Duplicates" value={stats?.duplicate_count ?? "—"} />
+        <StatCard label="Sources" value={fmt(stats?.sources_count)} />
+        <StatCard label="Duplicates" value={fmt(stats?.duplicate_count)} />
+        <StatCard label="Active Alerts" value={fmt(alertStats?.unreviewed)} color="text-orange-400" />
+        <StatCard label="Secrets Found" value={fmt(secretStats?.total)} color="text-red-400" />
       </div>
 
       {/* Parse status breakdown */}
@@ -167,11 +178,11 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div className="bg-forensic-surface rounded-lg border border-forensic-border p-4">
       <p className="text-sm text-slate-400">{label}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
+      <p className={`text-2xl font-bold mt-1 ${color || ""}`}>{value}</p>
     </div>
   );
 }
