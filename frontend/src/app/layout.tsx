@@ -3,8 +3,8 @@ import "@/styles/globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 
 export const metadata: Metadata = {
-  title: "Rubberduck — Digital Forensic Platform",
-  description: "Local-first investigative platform for digital evidence analysis",
+  title: "Gotham4Justice — Digital Forensic Intelligence",
+  description: "Law enforcement digital evidence investigation platform",
 };
 
 export default function RootLayout({
