@@ -10,6 +10,7 @@ from rubberduck.evidence.parsers.image import ImageParser
 from rubberduck.evidence.parsers.google_takeout import GoogleTakeoutParser
 from rubberduck.evidence.parsers.whatsapp_parser import WhatsAppParser
 from rubberduck.evidence.parsers.browser_db import BrowserDbParser
+from rubberduck.evidence.parsers.sqlite_parser import GenericSqliteParser
 
 # Parser registry: MIME type -> parser class
 PARSER_REGISTRY: dict[str, type[BaseParser]] = {}
@@ -22,6 +23,7 @@ def _register_all():
         PdfParser, DocxParser, HtmlParser,
         EmailParser, MboxParser,
         ImageParser,
+        BrowserDbParser, GenericSqliteParser,
     ]
     for cls in parser_classes:
         for mime in cls.supported_mimetypes():

@@ -115,12 +115,9 @@ class BrowserDbParser(BaseParser):
             db_type = _detect_browser(cursor)
             if not db_type:
                 conn.close()
-                return ParseResult(
-                    text_content="",
-                    metadata={"browser": "unrecognized"},
-                    warnings=["SQLite file does not match any known browser schema"],
-                    parser_name="BrowserDbParser",
-                )
+                # Fall through to GenericSqliteParser for non-browser SQLite files
+                from rubberduck.evidence.parsers.sqlite_parser import GenericSqliteParser
+                return GenericSqliteParser().parse(file_path, **kwargs)
 
             metadata["db_type"] = db_type
 
