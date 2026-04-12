@@ -563,3 +563,77 @@ class WatchlistEntry(Base):
     notes = Column(Text)
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=_utcnow)
+
+
+# ── Financial Transactions ────────────────────────────────
+
+
+class FinancialTransaction(Base):
+    """Individual financial transaction extracted from bank statements or crypto."""
+
+    __tablename__ = "financial_transactions"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    file_id = Column(String, ForeignKey("files.id"))
+    transaction_date = Column(DateTime)
+    transaction_date_raw = Column(String)
+    from_account = Column(String)
+    from_entity_id = Column(String, ForeignKey("entities.id"))
+    to_account = Column(String)
+    to_entity_id = Column(String, ForeignKey("entities.id"))
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="USD")
+    transaction_type = Column(String)  # debit, credit, transfer, withdrawal, deposit
+    category = Column(String)  # salary, rent, purchase, crypto, cash, wire, unknown
+    description = Column(Text)
+    reference_number = Column(String)
+    balance_after = Column(Float)
+
+    # Anomaly detection
+    is_anomaly = Column(Boolean, default=False)
+    anomaly_score = Column(Float, default=0.0)
+    anomaly_reasons = Column(Text)  # JSON
+
+    created_at = Column(DateTime, default=_utcnow)
+
+    file = relationship("File", backref="financial_transactions")
+
+    __table_args__ = (
+        Index("ix_fin_tx_date", "transaction_date"),
+        Index("ix_fin_tx_from", "from_account"),
+        Index("ix_fin_tx_to", "to_account"),
+        Index("ix_fin_tx_type", "transaction_type"),
+        Index("ix_fin_tx_anomaly", "is_anomaly"),
+    )
+
+
+# ── Geospatial Locations ─────────────────────────────────
+
+
+class GeoLocation(Base):
+    """A geographic location point extracted from evidence."""
+
+    __tablename__ = "geo_locations"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    entity_id = Column(String, ForeignKey("entities.id"))
+    file_id = Column(String, ForeignKey("files.id"))
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    altitude = Column(Float)
+    accuracy_meters = Column(Float)
+    timestamp = Column(DateTime)
+    source_type = Column(String)  # photo_exif, google_location_history, cell_tower, ip_geolocation, manual
+    label = Column(String)
+    raw_data = Column(Text)  # JSON
+
+    created_at = Column(DateTime, default=_utcnow)
+
+    entity = relationship("Entity", backref="geo_locations")
+    file = relationship("File", backref="geo_locations")
+
+    __table_args__ = (
+        Index("ix_geo_entity", "entity_id"),
+        Index("ix_geo_file", "file_id"),
+        Index("ix_geo_timestamp", "timestamp"),
+    )

@@ -7,6 +7,8 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "🏠" },
   { href: "/alerts", label: "Alerts", icon: "🚨" },
   { href: "/secrets", label: "Secrets", icon: "🔑" },
+  { href: "/financial", label: "Financial", icon: "💰" },
+  { href: "/map", label: "Map", icon: "🗺️" },
   { href: "/search", label: "Search", icon: "🔎" },
   { href: "/communications", label: "Communications", icon: "💬" },
   { href: "/phone-analysis", label: "Phone Analysis", icon: "📞" },

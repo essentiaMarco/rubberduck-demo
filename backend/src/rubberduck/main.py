@@ -104,6 +104,8 @@ from rubberduck.jobs.router import router as jobs_router
 from rubberduck.communications.router import router as communications_router
 from rubberduck.phone_analysis.router import router as phone_analysis_router
 from rubberduck.forensics.router import router as forensics_router
+from rubberduck.financial.router import router as financial_router
+from rubberduck.geo.router import router as geo_router
 
 app.include_router(evidence_router)
 app.include_router(search_router)
@@ -118,6 +120,8 @@ app.include_router(jobs_router)
 app.include_router(communications_router)
 app.include_router(phone_analysis_router)
 app.include_router(forensics_router)
+app.include_router(financial_router)
+app.include_router(geo_router)
 
 
 # ── Cases router (inline for simplicity) ──────────────────
