@@ -216,12 +216,14 @@ _PATTERNS: list[SecretPattern] = [
     ),
     SecretPattern(
         name="Password in URL",
+        # Strict: must be scheme://username:password@hostname pattern
+        # Username must be a simple word (no slashes/dots), password must have @host after
         pattern=re.compile(
-            r"https?://[^:]+:([^@\s]+)@[^\s]+"
+            r"https?://([a-zA-Z0-9_.+-]+):([^@\s:/?#]{3,})@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
         ),
         entity_type="credential", secret_type="password_in_url",
         severity="high", confidence=0.85,
-        description="Password embedded in URL",
+        description="Password embedded in URL (user:pass@host pattern)",
     ),
     # ── WiFi passwords ───────────────────────────────────────
     SecretPattern(
