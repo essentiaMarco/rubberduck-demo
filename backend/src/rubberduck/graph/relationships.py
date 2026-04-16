@@ -34,6 +34,17 @@ _REL_TYPE_MAP: dict[tuple[str, str], tuple[str, str]] = {
     ("org", "email"): ("uses_email", "digital_activity"),
     ("email", "email"): ("communicated_with", "communications"),
     ("email", "ip"): ("sent_from_ip", "digital_activity"),
+    # Forensic secret relationships
+    ("person", "credential"): ("has_credential", "digital_activity"),
+    ("person", "crypto_wallet"): ("owns_wallet", "financial"),
+    ("person", "api_key"): ("has_api_key", "digital_activity"),
+    ("person", "private_key"): ("has_private_key", "digital_activity"),
+    ("person", "token"): ("has_token", "digital_activity"),
+    ("email", "credential"): ("authenticates_with", "digital_activity"),
+    ("email", "api_key"): ("associated_with", "digital_activity"),
+    ("crypto_wallet", "crypto_wallet"): ("transacts_with", "financial"),
+    ("credential", "url"): ("authenticates_to", "digital_activity"),
+    ("api_key", "url"): ("accesses_service", "digital_activity"),
 }
 
 

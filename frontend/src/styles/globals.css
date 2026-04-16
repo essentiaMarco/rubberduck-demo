@@ -2,32 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 :root {
-  --bg-primary: #0f172a;
-  --bg-surface: #1e293b;
-  --border: #334155;
-  --accent: #38bdf8;
+  --bg-primary: #0a0e1a;
+  --bg-surface: #141825;
+  --bg-elevated: #1c2033;
+  --border: #2a2f42;
+  --border-subtle: #1f2335;
+  --accent: #6366f1;
+  --accent-light: #818cf8;
+  --accent-glow: rgba(99, 102, 241, 0.15);
   --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
+  --text-secondary: #8b92a8;
+  --text-muted: #5b6178;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #38bdf8;
 }
 
 body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   @apply bg-forensic-bg text-slate-100;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-forensic-bg;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-forensic-border rounded;
+  @apply bg-forensic-border/50 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-500;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Draft watermark overlay */

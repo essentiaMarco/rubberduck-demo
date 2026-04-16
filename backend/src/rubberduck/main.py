@@ -70,11 +70,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Rubberduck",
-    description="Local-first digital forensic investigative platform",
-    version="0.1.0",
+    title="Gotham4Justice",
+    description="Digital forensic investigation platform for law enforcement",
+    version="0.2.0",
     lifespan=lifespan,
-    redirect_slashes=False,  # Prevent 307 redirects that break reverse proxy setups
+    redirect_slashes=False,
 )
 
 # Bearer token authentication (must be added before CORS so it runs after CORS in the middleware stack)
@@ -103,6 +103,9 @@ from rubberduck.reports.router import router as reports_router
 from rubberduck.jobs.router import router as jobs_router
 from rubberduck.communications.router import router as communications_router
 from rubberduck.phone_analysis.router import router as phone_analysis_router
+from rubberduck.forensics.router import router as forensics_router
+from rubberduck.financial.router import router as financial_router
+from rubberduck.geo.router import router as geo_router
 
 app.include_router(evidence_router)
 app.include_router(search_router)
@@ -116,6 +119,9 @@ app.include_router(reports_router)
 app.include_router(jobs_router)
 app.include_router(communications_router)
 app.include_router(phone_analysis_router)
+app.include_router(forensics_router)
+app.include_router(financial_router)
+app.include_router(geo_router)
 
 
 # ── Cases router (inline for simplicity) ──────────────────

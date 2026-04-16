@@ -47,6 +47,11 @@ def list_messages(
     if date_end:
         q = q.filter(EmailMessage.email_date <= date_end)
 
+    # Exclude records with no email metadata (binary files misidentified as .eml)
+    q = q.filter(
+        (EmailMessage.email_from.isnot(None)) | (EmailMessage.email_subject.isnot(None))
+    )
+
     total = q.count()
 
     # Sorting
@@ -56,11 +61,6 @@ def list_messages(
         order_col = EmailMessage.email_from
     else:
         order_col = EmailMessage.email_date
-
-    # Exclude records with no email metadata (binary files misidentified as .eml)
-    q = q.filter(
-        (EmailMessage.email_from.isnot(None)) | (EmailMessage.email_subject.isnot(None))
-    )
 
     if sort_dir == "asc":
         q = q.order_by(order_col.asc().nullslast())
@@ -234,6 +234,48 @@ def extract_emails_from_single_file(
     result = extract_emails_from_file(db, file_record, reprocess=reprocess)
     db.commit()
     return result
+
+
+# ── Network Analysis ─────────────────────────────────────────
+
+
+@router.get("/network/matrix")
+def get_network_matrix(db: Session = Depends(get_db)):
+    """Contact frequency matrix across all communication channels."""
+    from rubberduck.communications.network_analyzer import get_frequency_matrix
+    return get_frequency_matrix(db)
+
+
+@router.get("/network/new-contacts")
+def get_new_contacts(
+    date: str = Query(..., description="Key date (ISO 8601)"),
+    window_days: int = Query(7, ge=1, le=90, description="Days before/after key date"),
+    db: Session = Depends(get_db),
+):
+    """Find contacts whose first communication is near a key date."""
+    from rubberduck.communications.network_analyzer import get_new_contacts as _get_new
+    return _get_new(db, around_date=date, window_days=window_days)
+
+
+@router.get("/network/burners")
+def get_burner_phones(db: Session = Depends(get_db)):
+    """Detect potential burner phones using behavioral heuristics."""
+    from rubberduck.communications.network_analyzer import detect_burner_phones
+    return detect_burner_phones(db)
+
+
+@router.get("/network/timeline")
+def get_comm_timeline(
+    contact_a: str = Query(..., description="First contact identifier"),
+    contact_b: str = Query(..., description="Second contact identifier"),
+    db: Session = Depends(get_db),
+):
+    """Full communication timeline between two contacts."""
+    from rubberduck.communications.network_analyzer import get_comm_timeline as _timeline
+    return _timeline(db, contact_a, contact_b)
+
+
+# ── Helpers ──────────────────────────────────────────────────
 
 
 def _msg_dict(msg: EmailMessage, full: bool = False) -> dict:

@@ -15,7 +15,9 @@ def get_duckdb() -> duckdb.DuckDBPyConnection:
     Gracefully handles the case where Parquet directories are empty or
     missing — this is normal before the first timeline rebuild.
     """
-    conn = duckdb.connect(str(settings.duckdb_path))
+    # Use in-memory connection to avoid DuckDB single-writer lock conflicts.
+    # Each request gets its own connection that reads parquet files directly.
+    conn = duckdb.connect(":memory:")
     parquet_dir = settings.parquet_dir
     events_path = str(parquet_dir / "events" / "*.parquet")
     comms_path = str(parquet_dir / "communications" / "*.parquet")
@@ -23,11 +25,13 @@ def get_duckdb() -> duckdb.DuckDBPyConnection:
     # Register views only if matching parquet files exist.
     # DuckDB throws IOException when the glob matches zero files.
     try:
+        # DDL statements don't support prepared parameters in DuckDB.
+        # The path comes from settings (not user input), so interpolation is safe.
         conn.execute(f"""
             CREATE OR REPLACE VIEW events AS
             SELECT * FROM read_parquet('{events_path}', union_by_name=true, hive_partitioning=false)
         """)
-    except duckdb.IOException:
+    except (duckdb.IOException, duckdb.CatalogException, duckdb.BinderException):
         logger.debug("No event parquet files found at %s — creating empty events view", events_path)
         conn.execute("""
             CREATE OR REPLACE VIEW events AS
@@ -56,7 +60,7 @@ def get_duckdb() -> duckdb.DuckDBPyConnection:
             CREATE OR REPLACE VIEW communications AS
             SELECT * FROM read_parquet('{comms_path}', union_by_name=true, hive_partitioning=false)
         """)
-    except duckdb.IOException:
+    except (duckdb.IOException, duckdb.CatalogException, duckdb.BinderException):
         logger.debug("No communications parquet files found at %s — creating empty view", comms_path)
         conn.execute("CREATE OR REPLACE VIEW communications AS SELECT 1 WHERE false")
 
