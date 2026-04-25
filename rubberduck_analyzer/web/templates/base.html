@@ -8,16 +8,31 @@
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body>
-  <nav class="nav">
-    <span class="nav-brand">RubberDuck Analyzer</span>
-    <a href="/">Dashboard</a>
-    <a href="/analyze/">Upload</a>
-    <a href="/sessions/">Sessions</a>
-    <a href="/synthesis/">Synthesis</a>
-    <a href="/context/">Context</a>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+  <nav class="nav" aria-label="Main navigation">
+    <span class="nav-brand">RD Analyzer</span>
+    <a href="/" id="nav-dashboard">Dashboard</a>
+    <a href="/analyze/" id="nav-upload">Upload</a>
+    <a href="/sessions/" id="nav-sessions">Sessions</a>
+    <a href="/synthesis/" id="nav-synthesis">Synthesis</a>
+    <a href="/context/" id="nav-context">Context</a>
   </nav>
-  <div class="container">
+  <main id="main-content">
+    {% block breadcrumb %}{% endblock %}
     {% block content %}{% endblock %}
-  </div>
+  </main>
+  <script>
+  // Active nav indicator
+  (function() {
+    const path = window.location.pathname;
+    const map = {'/': 'nav-dashboard', '/analyze/': 'nav-upload', '/sessions/': 'nav-sessions', '/synthesis/': 'nav-synthesis', '/context/': 'nav-context'};
+    for (const [prefix, id] of Object.entries(map)) {
+      if (prefix === '/' ? path === '/' : path.startsWith(prefix)) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+      }
+    }
+  })();
+  </script>
 </body>
 </html>

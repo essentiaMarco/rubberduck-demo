@@ -1,41 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Sessions - RubberDuck Analyzer{% endblock %}
 {% block content %}
-<h1 style="margin-bottom: 1.5rem;">All Sessions</h1>
+<div class="page-header">
+  <h1>Sessions</h1>
+  <a href="/analyze/" class="btn btn-primary">Upload & Analyze</a>
+</div>
 
 {% if sessions %}
-<div class="card">
+<div class="search-bar">
+  <input type="search" id="session-search" placeholder="Search by tester name..." onkeyup="filterSessions()">
+  <select id="milestone-filter" onchange="filterSessions()">
+    <option value="">All milestones</option>
+    <option value="M1">M1 only</option>
+    <option value="M2">M2 only</option>
+    <option value="M3">M3 only</option>
+  </select>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
   <table>
     <thead>
       <tr>
-        <th>Tester</th>
-        <th>Date</th>
+        <th><a href="javascript:void(0)" onclick="sortTable(0)">Tester <span class="sort-icon">&#9650;&#9660;</span></a></th>
+        <th><a href="javascript:void(0)" onclick="sortTable(1)">Date <span class="sort-icon">&#9650;&#9660;</span></a></th>
         <th>Milestone</th>
         <th>IDE</th>
-        <th>Trust</th>
+        <th><a href="javascript:void(0)" onclick="sortTable(4)">Trust <span class="sort-icon">&#9650;&#9660;</span></a></th>
         <th>M3 Candidacy</th>
         <th></th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="sessions-tbody">
       {% for s in sessions %}
-      <tr id="session-row-{{ s.id }}">
-        <td><a href="/sessions/{{ s.id }}">{{ s.tester }}</a></td>
-        <td>{{ s.date }}</td>
-        <td><span class="badge badge-running">{{ s.milestone }}</span></td>
+      <tr id="session-row-{{ s.id }}" data-tester="{{ s.tester|lower }}" data-milestone="{{ s.milestone }}">
+        <td><a href="/sessions/{{ s.id }}"><strong>{{ s.tester }}</strong></a></td>
+        <td style="white-space:nowrap">{{ s.date }}</td>
+        <td><span class="badge badge-{{ s.milestone|lower }}">{{ s.milestone }}</span></td>
         <td>{{ s.ide or '-' }}</td>
-        <td>{{ s.trust_score or '-' }}</td>
+        <td>{% if s.trust_score %}<strong>{{ s.trust_score }}</strong>/10{% else %}<span class="text-muted">-</span>{% endif %}</td>
         <td>
-          {% if s.m3_rating %}
-          <span class="badge badge-{{ s.m3_rating }}">{{ s.m3_rating }}</span>
-          {% else %}-{% endif %}
+          {% if s.m3_rating %}<span class="badge badge-{{ s.m3_rating }}">{{ s.m3_rating }}</span>
+          {% else %}<span class="text-muted">-</span>{% endif %}
         </td>
         <td>
-          <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; background: var(--error); color: white;"
-            hx-delete="/sessions/{{ s.id }}"
-            hx-confirm="Delete session for {{ s.tester }}?"
-            hx-target="#session-row-{{ s.id }}"
-            hx-swap="outerHTML"
+          <button class="btn btn-danger btn-sm"
+            hx-delete="/sessions/{{ s.id }}" hx-confirm="Delete session for {{ s.tester }}?"
+            hx-target="#session-row-{{ s.id }}" hx-swap="outerHTML"
+            aria-label="Delete session for {{ s.tester }}"
           >Delete</button>
         </td>
       </tr>
@@ -45,7 +56,38 @@
 </div>
 {% else %}
 <div class="card">
-  <p style="color: var(--text-muted);">No sessions analyzed yet. <a href="/analyze/">Upload a transcript</a> to get started.</p>
+  <div class="table-empty">
+    <p class="mb-sm">No sessions analyzed yet</p>
+    <a href="/analyze/" class="btn btn-primary btn-sm">Upload your first transcript</a>
+  </div>
 </div>
 {% endif %}
+
+<script>
+function filterSessions() {
+  const q = document.getElementById('session-search').value.toLowerCase();
+  const m = document.getElementById('milestone-filter').value;
+  document.querySelectorAll('#sessions-tbody tr').forEach(row => {
+    const name = row.dataset.tester || '';
+    const milestone = row.dataset.milestone || '';
+    const matchName = !q || name.includes(q);
+    const matchMilestone = !m || milestone === m;
+    row.style.display = matchName && matchMilestone ? '' : 'none';
+  });
+}
+function sortTable(colIndex) {
+  const tbody = document.getElementById('sessions-tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const dir = tbody.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+  tbody.dataset.sortDir = dir;
+  rows.sort((a, b) => {
+    const aVal = a.cells[colIndex]?.textContent.trim() || '';
+    const bVal = b.cells[colIndex]?.textContent.trim() || '';
+    const aNum = parseFloat(aVal), bNum = parseFloat(bVal);
+    if (!isNaN(aNum) && !isNaN(bNum)) return dir === 'asc' ? aNum - bNum : bNum - aNum;
+    return dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+</script>
 {% endblock %}

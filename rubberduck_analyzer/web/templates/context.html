@@ -1,35 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Context - RubberDuck Analyzer{% endblock %}
 {% block content %}
-<h1 style="margin-bottom: 1.5rem;">Product Context</h1>
+<div class="page-header">
+  <h1>Product Context</h1>
+</div>
 
 <div class="grid-2">
   <div class="card">
     <h2>Ingest Document</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">
-      Upload product documents (whitepaper, competitive analysis, KPIs, roadmap, changelog) for use during analysis.
+    <p class="text-sm text-muted mb-md">
+      Upload product documents for enriched analysis. These are referenced when assessing tester feedback against existing features.
     </p>
     <form hx-post="/context/ingest" hx-target="#ingest-result" hx-encoding="multipart/form-data">
       <div class="form-group">
-        <label>Document file</label>
+        <label>Document file <span class="hint">(.txt, .md, or .pdf)</span></label>
         <input type="file" name="file" accept=".txt,.md,.pdf" required>
       </div>
       <div class="form-group">
         <label>Document type</label>
         <select name="doc_type" required>
-          <option value="whitepaper">Whitepaper</option>
-          <option value="competitive">Competitive Analysis</option>
-          <option value="kpi">KPI / Benchmarks</option>
-          <option value="roadmap">Roadmap</option>
-          <option value="changelog">Changelog</option>
+          <option value="whitepaper">Whitepaper - product definition, use cases</option>
+          <option value="competitive">Competitive - RD vs competitors</option>
+          <option value="kpi">KPI - metrics, benchmarks, scorecards</option>
+          <option value="roadmap">Roadmap - planned features, timeline</option>
+          <option value="changelog">Changelog - recent changes</option>
         </select>
       </div>
       <button type="submit" class="btn btn-primary">
-        Ingest
-        <span class="htmx-indicator"><span class="spinner"></span></span>
+        Ingest <span class="htmx-indicator"><span class="spinner"></span></span>
       </button>
     </form>
-    <div id="ingest-result" style="margin-top: 1rem;"></div>
+    <div id="ingest-result" class="mt-md" aria-live="polite"></div>
   </div>
 
   <div class="card">
@@ -40,16 +41,16 @@
       <tbody>
         {% for doc in documents %}
         <tr>
-          <td><span class="badge badge-running">{{ doc.type }}</span></td>
-          <td>{{ doc.source }}</td>
+          <td><span class="badge badge-info">{{ doc.type }}</span></td>
+          <td class="text-sm">{{ doc.source }}</td>
           <td>{{ doc.chunks }}</td>
-          <td>{{ doc.date or '-' }}</td>
+          <td class="text-sm text-muted">{{ doc.date or '-' }}</td>
           <td>
-            <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; background: var(--error); color: white;"
+            <button class="btn btn-danger btn-sm"
               hx-delete="/context/{{ doc.type }}/{{ doc.source }}"
               hx-confirm="Delete {{ doc.chunks }} chunks from {{ doc.source }}?"
-              hx-target="closest tr"
-              hx-swap="outerHTML"
+              hx-target="closest tr" hx-swap="outerHTML"
+              aria-label="Delete {{ doc.source }}"
             >Delete</button>
           </td>
         </tr>
@@ -57,7 +58,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color: var(--text-muted);">No documents ingested yet.</p>
+    <div class="table-empty">No documents ingested yet.</div>
     {% endif %}
   </div>
 </div>

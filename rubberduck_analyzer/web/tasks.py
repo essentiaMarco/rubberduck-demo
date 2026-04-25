@@ -19,11 +19,14 @@ def run_m1_analysis(
     tester_name: str | None,
     facilitator_is_first: bool,
 ):
-    """Background task: run M1 analysis with concurrency control."""
+    """Background task: run M1 analysis with concurrency control and progress tracking."""
     with _ANALYSIS_SEMAPHORE:
         try:
-            update_job(job_id, "running")
+            update_job(job_id, "running", progress="Starting...")
             from rubberduck_analyzer.analyzers.m1_analyzer import analyze_m1
+
+            def _on_progress(step, total, desc):
+                update_job(job_id, "running", progress=desc)
 
             output_path = Path("data/sessions") / f"{job_id}.json"
             analyze_m1(
@@ -32,6 +35,7 @@ def run_m1_analysis(
                 output_path=output_path,
                 tester_name=tester_name,
                 facilitator_is_first=facilitator_is_first,
+                on_progress=_on_progress,
             )
             update_job(job_id, "completed", result_path=str(output_path))
         except Exception as e:
